@@ -1,0 +1,5 @@
+# Ignore environment variable files
+.env
+
+# Ignore all files in the gmail_api/utils folder
+gmail_api/utils/*
