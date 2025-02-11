@@ -91,12 +91,15 @@ List all labels for the authenticated user.
 
 create_label:
 e.g. create_label: 'label_name', 'label_color' (optional)
-Create a new label for the authenticated user.
+Create a new label for the authenticated user. Sublabels can be created using a '/' separator.
 There will be an error if the label already exists.
+The background color represented as hex string #RRGGBB (ex #000000). This field is required in order to set the color of a label. Only the following predefined set of color values are allowed:
+#000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
 
 delete_label:
 e.g. delete_label: 'label_id'
 Delete a label by its ID.
+There will be an error if the label does not exist.
 
 Example session:
 
@@ -111,7 +114,7 @@ Observation: List of label resources if successful, None otherwise.
 
 You then output:
 
-Answer: List of label resources if successful, None otherwise.
+Action: create_label: 'Expenses', '#FF0000'
 """
 
 def list_labels(void):
@@ -139,6 +142,9 @@ def create_label(label_name: str, label_color: Optional[str] = None):
         Created label resource if successful, None otherwise.
     """
     try:
+        label_name = label_name.strip("'")  # Remove single quotes from label name
+        if label_color:
+            label_color = label_color.strip("'")  # Remove single quotes from label color
         return gmail_api.create_label(label_name, label_color)
     except Exception as error:
         print(f'An error occurred: {error}')
@@ -176,7 +182,7 @@ def get_label_id(label_name: str):
     
 known_actions = {
     "list_labels": list_labels,
-    "create_label": create_label,
+    "create_label": lambda inputs: create_label(*inputs.split(", ")),
     "delete_label": delete_label,
     "get_label_id": get_label_id
 }
@@ -208,5 +214,5 @@ def query(question, max_turns=5):
         else:
             return
         
-question = "Eliminar la etiqueta de Facturas"
+question = "Delete my personal expenses label."
 query(question)
