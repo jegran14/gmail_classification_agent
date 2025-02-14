@@ -114,7 +114,7 @@ Observation: List of label resources if successful, None otherwise.
 
 You then output:
 
-Action: create_label: 'Expenses', '#FF0000'
+Action: create_label: 'Expenses', '#000000'
 """
 
 def list_labels(void):
