@@ -4,7 +4,7 @@ _ = load_dotenv(find_dotenv())
 
 from langchain_google_genai import ChatGoogleGenerativeAI # Import the ChatGoogleGenerativeAI class from langchain_google_genai
 from langchain_core.tools.convert import tool # Import the tool function to convert a function  to tool
-from typing import TypedDict, Annotated
+from typing import TypedDict, Annotated, Dict, Optional, Union, List
 import operator
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph, END
@@ -21,6 +21,7 @@ gmail_api = GmailAPI(credentials_path=os.getenv("GMAIL_CREDENTIALS_PATH"), token
 gmail_api()
 
 #region TOOLS DEFINITION
+#reguin LABELS
 @tool
 def list_labels() -> str:
     """List all the labels in the user's gmail account.
@@ -52,12 +53,11 @@ def list_labels() -> str:
 @tool
 def create_label(label_name: str, label_color: str) -> str:
     """Create a new label in the user's gmail account.
-    Labels can be nested for better organization, by using a "/" in the label name.
     
     Args:
-        label_name (str): The name of the label to create.
+        label_name (str): The name of the label to create. You can nest labels by using a '/' in the name. example ParentLabel/ChildLabel
         label_color (str): The color of the label in hex format.
-            List of colors: #000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
+            List of background available colors: #000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
         
     Returns:
         A message indicating the success or failure of the label creation
@@ -83,7 +83,66 @@ def delete_label(label_id: str) -> str:
         gmail_api.delete_label(label_id)
         return f"Label with ID {label_id} deleted successfully."
     except Exception as error:
-        return f"An error occurred: {error}"    
+        return f"An error occurred: {error}"   
+#endregion 
+    
+#region FILTERS
+@tool 
+def list_filters(self):
+    """List all the filters in the user's gmail account.
+    
+    Returns:
+        A list of dictionaries containing the filter information.
+        {
+            "id": string,
+            "criteria": {
+                object (FilterCriteria)
+            },
+            "action": {
+                object (FilterAction)
+            }
+        }
+    """
+    return gmail_api.list_filters()
+
+@tool
+def create_filter(criteria: Dict[str, str], actions: Dict[str, Union[str, List[str]]]) -> str:
+    """Create a new filter in the user's gmail account.
+    
+    Args:
+        criteria (Dict[str, str]): Filter criteria dictionary with possible keys:
+                - from: Sender email
+                - to: Recipient email
+                - subject: Email subject
+                - query: Gmail search query
+        actions (Dict[str, Union[str, List[str]]]): Filter actions dictionary with possible keys:
+            - addLabelIds: List of label IDs to add to the matching messages. Can only have one user defined label.
+            - removeLabelIds: List of label IDs to remove from the matching messages.
+            - forward: Email address to forward the matching messages to.
+
+    Example:
+    label_id_toAdd = "IMPORTANT" # User defined labels need to be passed by their id
+    label_id_toRemove = "INBOX"
+    filter_content = {
+        "criteria": {"from": "gsuder1@workspacesamples.dev"},
+        "action": {
+            "addLabelIds": [label_id],
+            "removeLabelIds": ["l"],
+        },
+    }
+    """
+    print(f"Criteria: {criteria}")
+    print(f"Actions: {actions}")
+
+    # Ensure addLabelIds and removeLabelIds are strings
+    if 'addLabelIds' in actions and isinstance(actions['addLabelIds'], list):
+        actions['addLabelIds'] = ','.join(actions['addLabelIds'])
+    if 'removeLabelIds' in actions and isinstance(actions['removeLabelIds'], list):
+        actions['removeLabelIds'] = ','.join(actions['removeLabelIds'])
+    
+    return gmail_api.create_filter(criteria, actions)
+    
+# endregion
 #endregion
 
 # region AGENT DEFINITION
@@ -140,6 +199,13 @@ class Agent:
             results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
         return {'messages': results}
     
+    def ask_human(self, state: AgentState):
+        """
+        The agent can ask the human for feedback. For example, the name or colour of a tag.
+        If there is a specific tag they would like to give a filter or anything the agent might have doubts with
+        """
+        pass
+    
     def exists_action(self, state: AgentState):
         """
         Check if there is a tool call in the last message
@@ -149,18 +215,19 @@ class Agent:
 
 # region TEST_AGENT
 prompt = """
-You are a super smart productivity agent that can help you manage your Gmail labels.\
+You are a super smart productivity agent for gmail email classification by managing filters and labels.\
 You can take one or more actions before returning a response.\
-Give the labels an name based on the question and a random color from the list.
+You have access to the list_labels and create_filter tools
 """.strip()
 
-tools = [list_labels, create_label, delete_label]
+#tools = [list_labels, create_label, delete_label]
+tools = [list_labels, create_filter]
 
 gnai_key = os.getenv("GOOGLE_GEN_AI_KEY")
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=gnai_key)
 agent = Agent(model, tools, system=prompt)
 
-question = "Delete the expenses label"
+question = "I want to classify all emails comming from santamav@uji.es as PERSONAL"
 messages = [HumanMessage(content=question)]
 result = agent.graph.invoke({"messages": messages})
 print(result["messages"][-1].content)

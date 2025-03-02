@@ -142,7 +142,7 @@ class GmailAPI:
                 return None
             
             
-    def create_filter(self, criteria: Dict[str, str], label_ids: List[str]) -> Optional[Dict]:
+    def create_filter(self, criteria: Dict[str, str], actions: Dict[str, Union[str, List[str]]]) -> Optional[Dict]:
         """
         Create a GMail filter that automatically applies a label to matching messages
         
@@ -152,35 +152,43 @@ class GmailAPI:
                 - to: Recipient email
                 - subject: Email subject
                 - query: Gmail search query
-            label_ids (List[str]): The label IDs to apply to the matching messages.
+            actions (Dict[str, Union[str, List[str]]]): Filter actions dictionary with possible keys:
+                - addLabelIds: List of label IDs to add to the matching messages. Can only have one user defined label.
+                - removeLabelIds: List of label IDs to remove from the matching messages.
+                - forward: Email address to forward the matching messages to.
+
             
         Returns:
             Created filter resource if successful, None otherwise.
         """
-        try: 
+        try:
+            # Ensure addLabelIds and removeLabelIds are strings
+            if 'addLabelIds' in actions and isinstance(actions['addLabelIds'], list):
+                actions['addLabelIds'] = ','.join(actions['addLabelIds'])
+            if 'removeLabelIds' in actions and isinstance(actions['removeLabelIds'], list):
+                actions['removeLabelIds'] = ','.join(actions['removeLabelIds'])
+            
             filter_content = {
-                'criteria': {},
-                'action': {
-                    'addLabelIds': label_ids,
-                    'removeLabelIds': []
-                }
+                'criteria': criteria,
+                'action': actions
             }
                 
             # Map criteria to Gmail API format
-            if 'from' in criteria:
+            """if 'from' in criteria:
                 filter_content['criteria']['from'] = criteria['from']
             if 'to' in criteria:
                 filter_content['criteria']['to'] = criteria['to']
             if 'subject' in criteria:
                 filter_content['criteria']['subject'] = criteria['subject']
             if 'query' in criteria:
-                filter_content['criteria']['query'] = criteria['query']
+                filter_content['criteria']['query'] = criteria['query']"""
                 
             return self.service.users().settings().filters().create(
                 userId='me', body=filter_content).execute()
                 
         except Exception as error:
             print(f'An error occurred: {error}')
+            return None
             
             
     def delete_filter(self, filter_id: str) -> None:
