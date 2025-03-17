@@ -4,7 +4,6 @@ _ = load_dotenv(find_dotenv())
 
 import operator
 from typing import TypedDict, Annotated, Dict, Optional, Union, List
-import uuid
 
 from langchain_google_genai import ChatGoogleGenerativeAI # Import the ChatGoogleGenerativeAI class from langchain_google_genai
 from langchain_core.tools.convert import tool # Import the tool function to convert a function  to tool
@@ -23,169 +22,6 @@ token_path = os.getenv("GMAIL_TOKEN_PATH")
 gmail_api = GmailAPI(credentials_path=os.getenv("GMAIL_CREDENTIALS_PATH"), token_path=os.getenv("GMAIL_TOKEN_PATH"))
 gmail_api()
 
-#region TOOLS DEFINITION
-#reguin LABELS
-@tool
-def list_labels() -> str:
-    """List all the labels in the user's gmail account.
-    
-    Returns:
-        A list of dictionaries containing the label information.
-        {
-            "id": string,
-            "name": string,
-            "messageListVisibility": enum (MessageListVisibility),
-            "labelListVisibility": enum (LabelListVisibility),
-            "type": enum (Type),
-            "messagesTotal": integer,
-            "messagesUnread": integer,
-            "threadsTotal": integer,
-            "threadsUnread": integer,
-            "color": {
-                object (Color)
-            }
-        }
-    """
-    labels = gmail_api.list_labels()
-    
-    if not labels:
-        return "No labels found."
-    
-    return labels
-
-@tool
-def create_label(label_name: str, label_color: str) -> str:
-    """Create a new label in the user's gmail account.
-    
-    Args:
-        label_name (str): The name of the label to create. You can nest labels by using a '/' in the name. example ParentLabel/ChildLabel
-        label_color (str): The color of the label in hex format.
-            List of background available colors: #000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
-        
-    Returns:
-        A message indicating the success or failure of the label creation
-        
-    Tips:
-        - If the user provides a label name with a '/', the label will be nested under the parent label.
-        - If the user provides a label name that already exists, the label will not be created.
-        - If the user provides a label color in natural language, you choose the closest color from the list of available colors.
-    """
-    label = gmail_api.create_label(label_name, label_color)
-    
-    if not label:
-        return "Label could not be created."
-    
-    return f"Label {label['name']} created successfully."
-
-@tool
-def delete_label(label_id: str) -> str:
-    """Delete a label from the user's gmail account.
-    
-    Args:
-        label_id (str): The ID of the label to delete.
-        
-    Returns:
-        A message indicating the success or failure of the label deletion
-    """
-    try:
-        gmail_api.delete_label(label_id)
-        return f"Label with ID {label_id} deleted successfully."
-    except Exception as error:
-        return f"An error occurred: {error}"   
-
-@tool
-def update_label(label_id: str, new_name: Optional[str] = None, new_color: Optional[str] = None) -> str:
-    """Update an existing label in the user's gmail account.
-    
-    Args:
-        label_id (str): The ID of the label to update.
-        new_name (str): The new name for the label.
-        new_color (str): The new color for the label in hex format.
-        
-    Returns:
-        A message indicating the success or failure of the label update.
-    """
-    label = gmail_api.update_label(label_id, new_name, new_color)
-    
-    if not label:
-        return "Label could not be updated."
-    
-    return f"Label {label['name']} updated successfully."
-#endregion 
-    
-#region FILTERS
-@tool 
-def list_filters(self):
-    """List all the filters in the user's gmail account.
-    
-    Returns:
-        A list of dictionaries containing the filter information.
-        {
-            "id": string,
-            "criteria": {
-                object (FilterCriteria)
-            },
-            "action": {
-                object (FilterAction)
-            }
-        }
-    """
-    return gmail_api.list_filters()
-
-@tool
-def create_filter(criteria: Dict[str, str], actions: Dict[str, Union[str, List[str]]]) -> str:
-    """Create a new filter in the user's gmail account.
-    
-    Args:
-        criteria (Dict[str, str]): Filter criteria dictionary with possible keys:
-                - from: Sender email
-                - to: Recipient email
-                - subject: Email subject
-                - query: Gmail search query
-        actions (Dict[str, Union[str, List[str]]]): Filter actions dictionary with possible keys:
-            - addLabelIds: List of label IDs to add to the matching messages. Can only have one user defined label.
-            - removeLabelIds: List of label IDs to remove from the matching messages.
-            - forward: Email address to forward the matching messages to.
-
-    Example:
-    label_id_toAdd = "IMPORTANT" # User defined labels need to be passed by their id
-    label_id_toRemove = "INBOX"
-    filter_content = {
-        "criteria": {"from": "gsuder1@workspacesamples.dev"},
-        "action": {
-            "addLabelIds": [label_id],
-            "removeLabelIds": ["label_id"],
-        },
-    }
-    """
-    print(f"Criteria: {criteria}")
-    print(f"Actions: {actions}")
-
-    # Ensure addLabelIds and removeLabelIds are strings
-    if 'addLabelIds' in actions and isinstance(actions['addLabelIds'], list):
-        actions['addLabelIds'] = ','.join(actions['addLabelIds'])
-    if 'removeLabelIds' in actions and isinstance(actions['removeLabelIds'], list):
-        actions['removeLabelIds'] = ','.join(actions['removeLabelIds'])
-    
-    return gmail_api.create_filter(criteria, actions)
-# endregion
-
-@tool
-def human_assistance(query: str) -> str:
-    """
-    Request human assistance for clarification or confirmation
-    
-    Args:
-        query (str): The query that requires human assistance.
-    """
-
-    user_input = input(f"{query}\n")
-    return user_input
-
-#tools = [list_labels, create_label, delete_label]
-tools = [list_labels, create_label, delete_label, update_label]
-#endregion
-
 # region AGENT DEFINITION
 from langgraph.types import interrupt
 
@@ -198,15 +34,15 @@ class AgentState(TypedDict):
     
 
 class Agent:
-    def __init__(self, model, tools, system = "", checkpointer = None):
+    def __init__(self, model, system = "", checkpointer = None):
         self.system = system
         graph = StateGraph(AgentState)  # Create a state graph with the AgentState class
         # Construct graph
-        graph.add_node("execute", self.execute)
-        graph.add_node("action", self.take_action)
+        graph.add_node("execute", self._execute)
+        graph.add_node("action", self._take_action)
         graph.add_conditional_edges(
             "execute",
-            self.exists_action,
+            self._exists_action,
             {True: "action", False: END}
         )
         graph.add_edge("action", "execute")
@@ -216,10 +52,11 @@ class Agent:
         self.graph = graph.compile(checkpointer=checkpointer)
         
         # Bind tools to the agent
+        tools = self._create_tools_from_functions(self._get_class_functions())
         self.tools = {t.name: t for t in tools}
         self.model = model.bind_tools(tools)
         
-    def execute(self, state: AgentState):
+    def _execute(self, state: AgentState):
         """
         Aexecute the agent with the user query
         """
@@ -230,7 +67,7 @@ class Agent:
         return {'messages': [message]}
     
 
-    def take_action(self, state: AgentState):
+    def _take_action(self, state: AgentState):
         """
         Take an action based on the user query.
         Only execute tool calls that were confirmed.
@@ -247,41 +84,209 @@ class Agent:
             results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
         return {'messages': results}
 
-    def exists_action(self, state: AgentState):
+    def _exists_action(self, state: AgentState):
         """
         Check if there is a tool call in the last message
         """
         return len(state["messages"][-1].tool_calls) > 0
-# endregion
-
-# region TEST_AGENT
-with open(os.path.join(os.path.dirname(__file__), "../prompts/agent_prompt.yaml"), "r") as f:
-    config_yaml = yaml.safe_load(f)
-prompt = config_yaml.get("prompt", "")
-
-gnai_key = os.getenv("GOOGLE_GEN_AI_KEY")
-model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=gnai_key)
-
-with SqliteSaver.from_conn_string(":memory:") as memory:
-    agent = Agent(model, tools, system=prompt, checkpointer=memory)
-    thread = {"configurable": {"thread_id": "1"}}
     
-    # Initial greeting from the agent
-    init_state = {"messages": [HumanMessage(content="")]}
-    for event in agent.graph.stream(init_state, thread):
-        for v in event.values():
-            msg = v["messages"][-1]
-            if isinstance(msg, AIMessage) and msg.content:
-                print(f"Agent: {msg.content}")
-    print("\n")
+    def _get_class_functions(self):
+        """
+        Get all the functions from the agent class. (Non-private functions)
+        """
+        return {name: method for name, method in self.__class__.__dict__.items() if not name.startswith('_')}
     
-    while True:
-        user_message = input("You: ")
-        messages = [HumanMessage(content=user_message)]
-        for event in agent.graph.stream({"messages": messages}, thread):
+    def _create_tools_from_functions(self, functions):
+        """
+        Create tools from the passed functions
+        """
+        tools = []
+        for name, method in functions.items():
+            bound_method = method.__get__(self, self.__class__)  # bind the method to remove 'self' from signature
+            tools.append(tool()(bound_method))
+        return tools
+            
+            
+    #reguion TOOLS DEFINITION
+    def list_labels(self) -> str:
+        """List all the labels in the user's gmail account.
+        
+        Returns:
+            A list of dictionaries containing the label information.
+            {
+                "id": string,
+                "name": string,
+                "messageListVisibility": enum (MessageListVisibility),
+                "labelListVisibility": enum (LabelListVisibility),
+                "type": enum (Type),
+                "messagesTotal": integer,
+                "messagesUnread": integer,
+                "threadsTotal": integer,
+                "threadsUnread": integer,
+                "color": {
+                    object (Color)
+                }
+            }
+        """
+        labels = gmail_api.list_labels()
+        
+        if not labels:
+            return "No labels found."
+        
+        return labels
+    
+    def create_label(self, label_name: str, label_color: str) -> str:
+        """Create a new label in the user's gmail account.
+        
+        Args:
+            label_name (str): The name of the label to create. You can nest labels by using a '/' in the name. example ParentLabel/ChildLabel
+            label_color (str): The color of the label in hex format.
+                List of background available colors: #000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
+            
+        Returns:
+            A message indicating the success or failure of the label creation
+            
+        Tips:
+            - If the user provides a label name with a '/', the label will be nested under the parent label.
+            - If the user provides a label name that already exists, the label will not be created.
+            - If the user provides a label color in natural language, you choose the closest color from the list of available colors.
+        """
+        label = gmail_api.create_label(label_name, label_color)
+        
+        if not label:
+            return "Label could not be created."
+        
+        return f"Label {label['name']} created successfully."
+    
+    def delete_label(self, label_id: str) -> str:
+        """Delete a label from the user's gmail account.
+        
+        Args:
+            label_id (str): The ID of the label to delete.
+            
+        Returns:
+            A message indicating the success or failure of the label deletion
+            
+        Tips:
+            - If the user does not provide the label_id you can find it by listing all labels and finding the label by name.
+
+        """
+        try:
+            gmail_api.delete_label(label_id)
+            return f"Label with ID {label_id} deleted successfully."
+        except Exception as error:
+            return f"An error occurred: {error}"  
+        
+    def update_label(self, label_id: str, new_name: Optional[str] = None, new_color: Optional[str] = None) -> str:
+        """Update an existing label in the user's gmail account.
+        
+        Args:
+            label_id (str): The ID of the label to update.
+            new_name (str): The new name for the label.
+            new_color (str): The new color for the label in hex format.
+            
+        Returns:
+            A message indicating the success or failure of the label update.
+            
+        Tips:
+            - If the user provides a label color in natural language, you choose the closest color from the list of available colors
+            - If the user does not provide the label_id you can find it by listing all labels and finding the label by name.
+        """
+        label = gmail_api.update_label(label_id, new_name, new_color)
+        
+        if not label:
+            return "Label could not be updated."
+        
+        return f"Label {label['name']} updated successfully."
+    
+    
+    def list_filters(self) -> str:
+        """List all the filters in the user's gmail account.
+        
+        Returns:
+            A list of dictionaries containing the filter information.
+            {
+                "id": string,
+                "criteria": {
+                    object (FilterCriteria)
+                },
+                "action": {
+                    object (FilterAction)
+                }
+            }
+            
+        Formatting:
+            - Display the filter criteria and actions in a human-readable format.
+            - The user does not know the Label IDs, so you should display the label names instead.
+        """
+        return gmail_api.list_filters()
+    
+    def create_filter(self, criteria: Dict[str, str], actions: Dict[str, Union[str, List[str]]]) -> str:
+        """Create a new filter in the user's gmail account.
+        
+        Args:
+            criteria (Dict[str, str]): Filter criteria dictionary with possible keys:
+                    - from: Sender email
+                    - to: Recipient email
+                    - subject: Email subject
+                    - query: Gmail search query
+            actions (Dict[str, Union[str, List[str]]]): Filter actions dictionary with possible keys:
+                - addLabelIds: List of label IDs to add to the matching messages. Can only have one user defined label.
+                - removeLabelIds: List of label IDs to remove from the matching messages.
+                - forward: Email address to forward the matching messages to.
+
+        Example:
+        label_id_toAdd = "IMPORTANT" # User defined labels need to be passed by their id
+        label_id_toRemove = "INBOX"
+        filter_content = {
+            "criteria": {"from": "gsuder1@workspacesamples.dev"},
+            "action": {
+                "addLabelIds": [label_id],
+                "removeLabelIds": ["label_id"],
+            },
+        }
+        """
+        print(f"Criteria: {criteria}")
+        print(f"Actions: {actions}")
+
+        # Ensure addLabelIds and removeLabelIds are strings
+        if 'addLabelIds' in actions and isinstance(actions['addLabelIds'], list):
+            actions['addLabelIds'] = ','.join(actions['addLabelIds'])
+        if 'removeLabelIds' in actions and isinstance(actions['removeLabelIds'], list):
+            actions['removeLabelIds'] = ','.join(actions['removeLabelIds'])
+        
+        return gmail_api.create_filter(criteria, actions)
+    # endregion
+
+if __name__ == '__main__':
+    # region TEST_AGENT
+    with open(os.path.join(os.path.dirname(__file__), "../prompts/agent_prompt.yaml"), "r") as f:
+        config_yaml = yaml.safe_load(f)
+    prompt = config_yaml.get("prompt", "")
+    
+    gnai_key = os.getenv("GOOGLE_GEN_AI_KEY")
+    model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=gnai_key)
+    
+    with SqliteSaver.from_conn_string(":memory:") as memory:
+        agent = Agent(model, system=prompt, checkpointer=memory)
+        thread = {"configurable": {"thread_id": "1"}}
+        
+        # Initial greeting from the agent
+        init_state = {"messages": [HumanMessage(content="")]}
+        for event in agent.graph.stream(init_state, thread):
             for v in event.values():
                 msg = v["messages"][-1]
                 if isinstance(msg, AIMessage) and msg.content:
                     print(f"Agent: {msg.content}")
         print("\n")
-# endregion
+        
+        while True:
+            user_message = input("You: ")
+            messages = [HumanMessage(content=user_message)]
+            for event in agent.graph.stream({"messages": messages}, thread):
+                for v in event.values():
+                    msg = v["messages"][-1]
+                    if isinstance(msg, AIMessage) and msg.content:
+                        print(f"Agent: {msg.content}")
+            print("\n")
+    # endregion
