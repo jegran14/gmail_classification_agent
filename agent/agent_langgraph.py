@@ -250,7 +250,6 @@ class Agent:
 # endregion
 
 # region TEST_AGENT
-# Load prompt from the YAML file using a relative path
 with open(os.path.join(os.path.dirname(__file__), "../prompts/agent_prompt.yaml"), "r") as f:
     config_yaml = yaml.safe_load(f)
 prompt = config_yaml.get("prompt", "")
@@ -258,13 +257,13 @@ prompt = config_yaml.get("prompt", "")
 gnai_key = os.getenv("GOOGLE_GEN_AI_KEY")
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=gnai_key)
 
-# Using the checkpointer within a context to ensure it’s properly constructed
 with SqliteSaver.from_conn_string(":memory:") as memory:
     agent = Agent(model, tools, system=prompt, checkpointer=memory)
-    question = "I want to delete on of the labels but don't know which ones I have"
-    messages = [HumanMessage(content=question)]
     thread = {"configurable": {"thread_id": "1"}}
-    for event in agent.graph.stream({"messages": messages}, thread):
-        for v in event.values():
-            print(v)
+    while True:
+        user_message = input("You: ")
+        messages = [HumanMessage(content=user_message)]
+        for event in agent.graph.stream({"messages": messages}, thread):
+            for v in event.values():
+                print(v)
 # endregion
