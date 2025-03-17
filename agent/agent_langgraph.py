@@ -2,19 +2,22 @@ import os
 from dotenv import load_dotenv, find_dotenv
 _ = load_dotenv(find_dotenv())
 
+import operator
+from typing import TypedDict, Annotated, Dict, Optional, Union, List
+import uuid
+
 from langchain_google_genai import ChatGoogleGenerativeAI # Import the ChatGoogleGenerativeAI class from langchain_google_genai
 from langchain_core.tools.convert import tool # Import the tool function to convert a function  to tool
-from typing import TypedDict, Annotated, Dict, Optional, Union, List
-import operator
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from gmail_api.gmail_api import GmailAPI
 
+import yaml  # added import for YAML parsing
 
-# NOTE: How can I wrap the GmailAPI class in a tool?
 creds_path = os.getenv("GMAIL_CREDENTIALS_PATH")
 token_path = os.getenv("GMAIL_TOKEN_PATH")
 gmail_api = GmailAPI(credentials_path=os.getenv("GMAIL_CREDENTIALS_PATH"), token_path=os.getenv("GMAIL_TOKEN_PATH"))
@@ -84,6 +87,25 @@ def delete_label(label_id: str) -> str:
         return f"Label with ID {label_id} deleted successfully."
     except Exception as error:
         return f"An error occurred: {error}"   
+
+@tool
+def update_label(label_id: str, new_name: Optional[str] = None, new_color: Optional[str] = None) -> str:
+    """Update an existing label in the user's gmail account.
+    
+    Args:
+        label_id (str): The ID of the label to update.
+        new_name (str): The new name for the label.
+        new_color (str): The new color for the label in hex format.
+        
+    Returns:
+        A message indicating the success or failure of the label update.
+    """
+    label = gmail_api.update_label(label_id, new_name, new_color)
+    
+    if not label:
+        return "Label could not be updated."
+    
+    return f"Label {label['name']} updated successfully."
 #endregion 
     
 #region FILTERS
@@ -127,7 +149,7 @@ def create_filter(criteria: Dict[str, str], actions: Dict[str, Union[str, List[s
         "criteria": {"from": "gsuder1@workspacesamples.dev"},
         "action": {
             "addLabelIds": [label_id],
-            "removeLabelIds": ["l"],
+            "removeLabelIds": ["label_id"],
         },
     }
     """
@@ -141,11 +163,27 @@ def create_filter(criteria: Dict[str, str], actions: Dict[str, Union[str, List[s
         actions['removeLabelIds'] = ','.join(actions['removeLabelIds'])
     
     return gmail_api.create_filter(criteria, actions)
-    
 # endregion
+
+@tool
+def human_assistance(query: str) -> str:
+    """
+    Request human assistance for clarification or confirmation
+    
+    Args:
+        query (str): The query that requires human assistance.
+    """
+
+    user_input = input(f"{query}\n")
+    return user_input
+
+#tools = [list_labels, create_label, delete_label]
+tools = [list_labels, create_label, delete_label, update_label]
 #endregion
 
 # region AGENT DEFINITION
+from langgraph.types import interrupt
+
 class AgentState(TypedDict):
     """
     Messages history of the agent. The Annotation operator.add is used to concatenate the list of messages.
@@ -155,9 +193,9 @@ class AgentState(TypedDict):
     
 
 class Agent:
-    def __init__(self, model, tools, system = ""):
+    def __init__(self, model, tools, system = "", checkpointer = None):
         self.system = system
-        graph = StateGraph(AgentState) # Create a state graph with the AgentState class
+        graph = StateGraph(AgentState)  # Create a state graph with the AgentState class
         # Construct graph
         graph.add_node("execute", self.execute)
         graph.add_node("action", self.take_action)
@@ -169,7 +207,10 @@ class Agent:
         graph.add_edge("action", "execute")
         graph.set_entry_point("execute")
         
-        self.graph = graph.compile()
+        # Compile the graph
+        self.graph = graph.compile(checkpointer=checkpointer)
+        
+        # Bind tools to the agent
         self.tools = {t.name: t for t in tools}
         self.model = model.bind_tools(tools)
         
@@ -179,33 +220,28 @@ class Agent:
         """
         messages = state["messages"]
         if(self.system):
-            messages = [SystemMessage(self.system)] + messages
+            messages = [SystemMessage(content=self.system)] + messages
         message = self.model.invoke(messages)
         return {'messages': [message]}
     
+
     def take_action(self, state: AgentState):
         """
-        Take an action based on the user query
+        Take an action based on the user query.
+        Only execute tool calls that were confirmed.
         """
-        tool_calls = state["messages"][-1].tool_calls # Get the tool calls from the last message
+        tool_calls = state["messages"][-1].tool_calls  # tool_calls already filtered by ask_human
         results = []
         for t in tool_calls:
             print(f"Calling: {t}")
             if t['name'] not in self.tools:
-                print(f"Unknown tool name: {t.name}")
+                print(f"Unknown tool name: {t['name']}")
                 result = "Bad tool name, retry ......../n"
             else:
-                result = self.tools[t['name']](t['args'])
+                result = self.tools[t['name']].invoke(t['args'])
             results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
         return {'messages': results}
-    
-    def ask_human(self, state: AgentState):
-        """
-        The agent can ask the human for feedback. For example, the name or colour of a tag.
-        If there is a specific tag they would like to give a filter or anything the agent might have doubts with
-        """
-        pass
-    
+
     def exists_action(self, state: AgentState):
         """
         Check if there is a tool call in the last message
@@ -214,21 +250,21 @@ class Agent:
 # endregion
 
 # region TEST_AGENT
-prompt = """
-You are a super smart productivity agent for gmail email classification by managing filters and labels.\
-You can take one or more actions before returning a response.\
-You have access to the list_labels and create_filter tools
-""".strip()
-
-#tools = [list_labels, create_label, delete_label]
-tools = [list_labels, create_filter]
+# Load prompt from the YAML file using a relative path
+with open(os.path.join(os.path.dirname(__file__), "../prompts/agent_prompt.yaml"), "r") as f:
+    config_yaml = yaml.safe_load(f)
+prompt = config_yaml.get("prompt", "")
 
 gnai_key = os.getenv("GOOGLE_GEN_AI_KEY")
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=gnai_key)
-agent = Agent(model, tools, system=prompt)
 
-question = "I want to classify all emails comming from santamav@uji.es as PERSONAL"
-messages = [HumanMessage(content=question)]
-result = agent.graph.invoke({"messages": messages})
-print(result["messages"][-1].content)
-#endregion
+# Using the checkpointer within a context to ensure it’s properly constructed
+with SqliteSaver.from_conn_string(":memory:") as memory:
+    agent = Agent(model, tools, system=prompt, checkpointer=memory)
+    question = "I want to delete on of the labels but don't know which ones I have"
+    messages = [HumanMessage(content=question)]
+    thread = {"configurable": {"thread_id": "1"}}
+    for event in agent.graph.stream({"messages": messages}, thread):
+        for v in event.values():
+            print(v)
+# endregion

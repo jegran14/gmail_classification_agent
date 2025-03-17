@@ -58,10 +58,24 @@ class GmailAPI:
     # region LABELS
     def list_labels(self) -> Optional[List[Dict]]:
         """
-        List all labels for the authenticated user.
-        
+        List all the labels in the user's gmail account.
+    
         Returns:
-            List of label resources if successful, None otherwise.
+            A list of dictionaries containing the label information.
+            {
+                "id": string,
+                "name": string,
+                "messageListVisibility": enum (MessageListVisibility),
+                "labelListVisibility": enum (LabelListVisibility),
+                "type": enum (Type),
+                "messagesTotal": integer,
+                "messagesUnread": integer,
+                "threadsTotal": integer,
+                "threadsUnread": integer,
+                "color": {
+                    object (Color)
+                }
+            }
         """
         try:
             return self.service.users().labels().list(userId='me').execute().get('labels', [])
@@ -124,6 +138,34 @@ class GmailAPI:
         except Exception as error:
             print(f'An error occurred: {error}')
             return None
+
+    def update_label(self, label_id: str, new_name: Optional[str] = None, new_color: Optional[str] = None) -> Optional[Dict]:
+        """
+        Update an existing label's name and/or color.
+        
+        Args:
+            label_id (str): The ID of the label to update.
+            new_name (str): The new name for the label.
+            new_color (str): The new color for the label in hex format.
+            
+        Returns:
+            Updated label resource if successful, None otherwise.
+        """
+        try:
+            label_content = {}
+            if new_name:
+                label_content['name'] = new_name
+            if new_color:
+                label_content['color'] = {
+                    'backgroundColor': new_color,
+                    'textColor': '#000000'  # Use 'black' as a predefined color name
+                }
+                
+            return self.service.users().labels().patch(
+                userId='me', id=label_id, body=label_content).execute()
+        except Exception as error:
+            print(f'An error occurred: {error}')
+            return None
     # endregion
     
     
@@ -172,16 +214,6 @@ class GmailAPI:
                 'criteria': criteria,
                 'action': actions
             }
-                
-            # Map criteria to Gmail API format
-            """if 'from' in criteria:
-                filter_content['criteria']['from'] = criteria['from']
-            if 'to' in criteria:
-                filter_content['criteria']['to'] = criteria['to']
-            if 'subject' in criteria:
-                filter_content['criteria']['subject'] = criteria['subject']
-            if 'query' in criteria:
-                filter_content['criteria']['query'] = criteria['query']"""
                 
             return self.service.users().settings().filters().create(
                 userId='me', body=filter_content).execute()
