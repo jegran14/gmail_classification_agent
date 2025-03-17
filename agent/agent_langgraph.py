@@ -8,7 +8,7 @@ import uuid
 
 from langchain_google_genai import ChatGoogleGenerativeAI # Import the ChatGoogleGenerativeAI class from langchain_google_genai
 from langchain_core.tools.convert import tool # Import the tool function to convert a function  to tool
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 
@@ -265,5 +265,8 @@ with SqliteSaver.from_conn_string(":memory:") as memory:
         messages = [HumanMessage(content=user_message)]
         for event in agent.graph.stream({"messages": messages}, thread):
             for v in event.values():
-                print(v)
+                msg = v["messages"][-1]
+                if isinstance(msg, AIMessage) and msg.content:
+                    print(f"Agent: {msg.content}")
+        print("\n")
 # endregion
