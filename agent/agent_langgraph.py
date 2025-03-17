@@ -64,6 +64,11 @@ def create_label(label_name: str, label_color: str) -> str:
         
     Returns:
         A message indicating the success or failure of the label creation
+        
+    Tips:
+        - If the user provides a label name with a '/', the label will be nested under the parent label.
+        - If the user provides a label name that already exists, the label will not be created.
+        - If the user provides a label color in natural language, you choose the closest color from the list of available colors.
     """
     label = gmail_api.create_label(label_name, label_color)
     
@@ -260,6 +265,16 @@ model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=gnai_key)
 with SqliteSaver.from_conn_string(":memory:") as memory:
     agent = Agent(model, tools, system=prompt, checkpointer=memory)
     thread = {"configurable": {"thread_id": "1"}}
+    
+    # Initial greeting from the agent
+    init_state = {"messages": [HumanMessage(content="")]}
+    for event in agent.graph.stream(init_state, thread):
+        for v in event.values():
+            msg = v["messages"][-1]
+            if isinstance(msg, AIMessage) and msg.content:
+                print(f"Agent: {msg.content}")
+    print("\n")
+    
     while True:
         user_message = input("You: ")
         messages = [HumanMessage(content=user_message)]
