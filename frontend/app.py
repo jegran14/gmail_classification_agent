@@ -1,7 +1,10 @@
 from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
 import os, sys, yaml, time, uuid
 from dotenv import load_dotenv, find_dotenv
-import atexit
+import markdown
+import bleach
+from bleach.sanitizer import ALLOWED_TAGS, ALLOWED_ATTRIBUTES
+from typing import List
 
 # Add the parent directory to the path so we can import from agent
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -16,6 +19,38 @@ _ = load_dotenv(find_dotenv())
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"  # Replace with a secure secret key
+
+# Configure Markdown and Bleach for safe rendering
+# Extended allowed tags for markdown rendering
+EXTENDED_ALLOWED_TAGS = list(ALLOWED_TAGS) + [
+    'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code',
+    'ul', 'ol', 'li', 'blockquote', 'hr', 'br', 'strong', 
+    'em', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
+]
+
+# Extended attributes for links and code styling
+EXTENDED_ALLOWED_ATTRIBUTES = dict(ALLOWED_ATTRIBUTES)
+EXTENDED_ALLOWED_ATTRIBUTES['a'] = ['href', 'title', 'class']
+EXTENDED_ALLOWED_ATTRIBUTES['code'] = ['class']
+EXTENDED_ALLOWED_ATTRIBUTES['pre'] = ['class']
+
+def process_markdown(text):
+    """Convert markdown to HTML and sanitize"""
+    # Convert markdown to HTML
+    html = markdown.markdown(
+        text, 
+        extensions=['extra', 'codehilite', 'tables', 'fenced_code']
+    )
+    
+    # Sanitize HTML to prevent XSS
+    sanitized_html = bleach.clean(
+        html,
+        tags=EXTENDED_ALLOWED_TAGS,
+        attributes=EXTENDED_ALLOWED_ATTRIBUTES,
+        strip=True
+    )
+    
+    return sanitized_html
 
 def initialize_agent(checkpointer):
     # Load the prompt from YAML file
@@ -42,6 +77,8 @@ template = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <style>
         :root {
             --primary-color: #1a73e8;
@@ -52,6 +89,7 @@ template = """
             --text-primary: #202124;
             --text-secondary: #5f6368;
             --border-color: #dadce0;
+            --code-bg: #f5f7f9;
             --shadow-sm: 0 2px 5px rgba(0,0,0,0.08);
             --shadow-md: 0 4px 10px rgba(0,0,0,0.12);
             --radius-sm: 8px;
@@ -204,6 +242,84 @@ template = """
             align-self: flex-start;
             border: 1px solid var(--border-color);
             border-bottom-left-radius: 4px;
+        }
+        
+        /* Markdown Styling */
+        .agent h1, .agent h2, .agent h3, .agent h4, .agent h5, .agent h6 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        
+        .agent h1 { font-size: 1.6em; }
+        .agent h2 { font-size: 1.4em; }
+        .agent h3 { font-size: 1.2em; }
+        
+        .agent p {
+            margin-bottom: 10px;
+        }
+        
+        .agent ul, .agent ol {
+            margin-bottom: 10px;
+            margin-left: 20px;
+        }
+        
+        .agent li {
+            margin-bottom: 4px;
+        }
+        
+        .agent pre {
+            background-color: var(--code-bg);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .agent code {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .agent pre code {
+            padding: 0;
+            background-color: transparent;
+        }
+        
+        .agent blockquote {
+            border-left: 4px solid var(--primary-light);
+            padding-left: 12px;
+            margin: 10px 0;
+            color: var(--text-secondary);
+        }
+        
+        .agent a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .agent a:hover {
+            text-decoration: underline;
+        }
+        
+        .agent table {
+            border-collapse: collapse;
+            margin: 10px 0;
+            width: 100%;
+        }
+        
+        .agent th, .agent td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .agent th {
+            background-color: var(--background-color);
         }
         
         .input-container {
@@ -432,7 +548,11 @@ template = """
             <div id="messages-container" class="messages-container">
                 {% for msg in messages %}
                     <div class="message {{ msg.type }}">
-                        {{ msg.content }}
+                        {% if msg.type == 'agent' %}
+                            {{ msg.content|safe }}
+                        {% else %}
+                            {{ msg.content }}
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
@@ -488,6 +608,22 @@ template = """
     </div>
     
     <script>
+        // Initialize syntax highlighting
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
+            });
+        });
+        
+        // Function to highlight code in newly added messages
+        function highlightNewCode() {
+            document.querySelectorAll('pre code').forEach((block) => {
+                if (!block.classList.contains('hljs')) {
+                    hljs.highlightBlock(block);
+                }
+            });
+        }
+        
         // DOM elements
         const chatView = document.getElementById("chat-view");
         const welcomeScreen = document.getElementById("welcome-screen");
@@ -533,8 +669,11 @@ template = """
                     // Add agent message
                     const messageDiv = document.createElement("div");
                     messageDiv.className = "message agent";
-                    messageDiv.textContent = data.message;
+                    messageDiv.innerHTML = data.message;
                     messagesContainer.appendChild(messageDiv);
+                    
+                    // Apply syntax highlighting to code blocks
+                    highlightNewCode();
                     scrollToBottom();
                 });
             });
@@ -601,11 +740,14 @@ template = """
                     // Remove typing indicator
                     messagesContainer.removeChild(typingIndicator);
                     
-                    // Add agent message
+                    // Add agent message with HTML content
                     const agentMessageDiv = document.createElement("div");
                     agentMessageDiv.className = "message agent";
-                    agentMessageDiv.textContent = data.message;
+                    agentMessageDiv.innerHTML = data.message;
                     messagesContainer.appendChild(agentMessageDiv);
+                    
+                    // Apply syntax highlighting to code blocks
+                    highlightNewCode();
                     scrollToBottom();
                 });
             });
@@ -622,7 +764,13 @@ def make_session_permanent():
 
 @app.route("/", methods=["GET"])
 def chat():
-    return render_template_string(template, messages=session.get("messages", []))
+    # Convert any markdown in agent messages to HTML for rendering
+    messages = session.get("messages", [])
+    for msg in messages:
+        if msg["type"] == "agent":
+            msg["content"] = process_markdown(msg["content"])
+    
+    return render_template_string(template, messages=messages)
 
 @app.route("/initialize", methods=["POST"])
 def initialize_chat():
@@ -647,7 +795,10 @@ def initialize_chat():
     if agent_response:
         session["messages"].append({"type": "agent", "content": agent_response})
     
-    return jsonify({"success": True, "message": agent_response})
+    # Convert markdown to HTML for response
+    html_response = process_markdown(agent_response) if agent_response else ""
+    
+    return jsonify({"success": True, "message": html_response})
 
 @app.route("/chat", methods=["POST"])
 def process_message():
@@ -676,11 +827,14 @@ def process_message():
             if isinstance(msg, AIMessage) and msg.content:
                 agent_response = msg.content
     
-    # Add agent response to session
+    # Add agent response to session (store raw markdown)
     if agent_response:
         session["messages"].append({"type": "agent", "content": agent_response})
     
-    return jsonify({"success": True, "message": agent_response})
+    # Convert markdown to HTML for response
+    html_response = process_markdown(agent_response) if agent_response else ""
+    
+    return jsonify({"success": True, "message": html_response})
 
 @app.route("/clear", methods=["POST"])
 def clear_chat():
