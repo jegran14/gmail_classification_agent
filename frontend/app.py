@@ -1,6 +1,7 @@
 from flask import Flask, render_template_string, request, redirect, url_for, session
 import os, sys, yaml, time
 from dotenv import load_dotenv, find_dotenv
+import atexit
 
 # Add the parent directory to the path so we can import from agent
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -8,6 +9,7 @@ from agent.agent_langgraph import Agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 # Load environment variables
 _ = load_dotenv(find_dotenv())
@@ -15,9 +17,9 @@ _ = load_dotenv(find_dotenv())
 app = Flask(__name__)
 app.secret_key = "your_secret_key"  # Replace with a secure secret key
 
-def initialize_agent():
+def initialize_agent(checkpointer):
     # Load the prompt from YAML file
-    with open(os.path.join(os.path.dirname(__file__), "../prompts/agent_prompt.yaml"), "r") as f:
+    with open(os.path.join(os.path.dirname(__file__), "../agent/prompts/agent_prompt.yaml"), "r") as f:
         config_yaml = yaml.safe_load(f)
     prompt = config_yaml.get("prompt", "")
     
@@ -25,13 +27,11 @@ def initialize_agent():
     gnai_key = os.getenv("GOOGLE_GEN_AI_KEY")
     model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=gnai_key)
     
-    memory = MemorySaver()
-    
-    # Initialize the agent
-    agent = Agent(model, system=prompt, checkpointer=memory)
+    agent = Agent(model, system=prompt, checkpointer=checkpointer)
     return agent
 
-agent = initialize_agent()
+global_memory = MemorySaver()
+global_agent = initialize_agent(global_memory)
 
 # HTML template with revamped visuals
 template = """
@@ -174,23 +174,44 @@ def make_session_permanent():
 
 @app.route("/", methods=["GET", "POST"])
 def chat():
+    if "thread_id" not in session:
+        session["thread_id"] = str(time.time())  # Persistent thread ID for session
+
+    thread = {"configurable": {"thread_id": session["thread_id"]}}
+
     if request.method == "POST":
         user_input = request.form.get("user_input")
         if user_input:
             session.setdefault("messages", [])
             session["messages"].append({"type": "user", "content": user_input})
-            user_message = HumanMessage(content=user_input)
-            # Get agent response (blocking call)
-            for event in agent.graph.stream({"messages": [user_message]}, {"configurable": {"thread_id": str(time.time())}}):
+
+            # Pass full conversation history
+            conversation_history = [
+                HumanMessage(content=m["content"]) if m["type"] == "user" else AIMessage(content=m["content"])
+                for m in session["messages"]
+            ]
+
+            for event in global_agent.graph.stream({"messages": conversation_history}, thread):
                 for v in event.values():
                     msg = v["messages"][-1]
                     if isinstance(msg, AIMessage) and msg.content:
                         session["messages"].append({"type": "agent", "content": msg.content})
+
             return render_template_string(template, messages=session["messages"])
     else:
-        # Fresh chat: clear messages on every GET request
+        # Initialize session messages on first load
         session["messages"] = []
+
+        # Send an empty user message to get an initial response
+        init_state = {"messages": [HumanMessage(content="")]}
+        for event in global_agent.graph.stream(init_state, thread):
+            for v in event.values():
+                msg = v["messages"][-1]
+                if isinstance(msg, AIMessage) and msg.content:
+                    session["messages"].append({"type": "agent", "content": msg.content})
+
     return render_template_string(template, messages=session["messages"])
+
 
 if __name__ == "__main__":
     app.run(debug=True)
