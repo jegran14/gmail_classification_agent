@@ -18,6 +18,8 @@ class GmailToolkit:
             self.update_label,
             self.list_filters,
             self.create_filter,
+            self.delete_filter,
+            self.update_filter
         ]
 
     def get_tools(self):
@@ -162,3 +164,42 @@ class GmailToolkit:
         if 'removeLabelIds' in actions and isinstance(actions['removeLabelIds'], list):
             actions['removeLabelIds'] = ','.join(actions['removeLabelIds'])
         return self.gmail_api.create_filter(criteria, actions)
+    
+    def delete_filter(self, filter_id: str) -> str:
+        """Delete a filter from the user's gmail account.
+        
+        Args:
+            filter_id (str): The ID of the filter to delete.
+            
+        Returns:
+            A message indicating the success or failure of the filter deletion
+            
+        Tips:
+            - If the user does not provide the filter_id you can find it by listing all filters and finding the filter by criteria.
+        """
+        try:
+            self.gmail_api.delete_filter(filter_id)
+            return f"Filter with ID {filter_id} deleted successfully."
+        except Exception as error:
+            return f"An error occurred: {error}"
+        
+    def update_filter(self, filter_id: str, criteria: Dict[str, str], actions: Dict[str, Union[str, List[str]]]) -> str:
+        """
+        Update an existing filter's criteria and/or actions.
+        
+        Args:
+            filter_id (str): The ID of the filter to update.
+            criteria (Dict[str, str]): Filter criteria dictionary with possible keys:
+                - from: Sender email
+                - to: Recipient email
+                - subject: Email subject
+                - query: Gmail search query
+            actions (Dict[str, Union[str, List[str]]]): Filter actions dictionary with possible keys:
+                - addLabelIds: List of label IDs to add to the matching messages. Can only have one user defined label.
+                - removeLabelIds: List of label IDs to remove from the matching messages.
+                - forward: Email address to forward the matching messages to.
+                
+        Returns:
+            Updated filter resource if successful, None otherwise.
+        """
+        return "To update a filter you need to delete the existing filter and create a new one with the updated criteria and actions."

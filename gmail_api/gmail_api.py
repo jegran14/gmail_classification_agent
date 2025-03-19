@@ -234,6 +234,30 @@ class GmailAPI:
             self.service.users().settings().filters().delete(userId='me', id=filter_id).execute()
         except Exception as error:
             print(f'An error occurred: {error}')
+            
+    def update_filter(self, filter_id: str, criteria: Optional[Dict[str, str]] = None, actions: Optional[Dict[str, Union[str, List[str]]]] = None) -> Optional[Dict]:
+        """
+        Update an existing filter's criteria and/or actions. 
+        To update a filter, we are deleting the previous one an creating a new one adding the new criteria and actions.
+        
+        Args:
+            filter_id (str): The ID of the filter to update.
+            criteria (Dict[str, str]): Filter criteria dictionary with possible keys:
+                - from: Sender email
+                - to: Recipient email
+                - subject: Email subject
+                - query: Gmail search query
+            actions (Dict[str, Union[str, List[str]]]): Filter actions dictionary with possible keys:
+                - addLabelIds: List of label IDs to add to the matching messages. Can only have one user defined label.
+                - removeLabelIds: List of label IDs to remove from the matching messages.
+                - forward: Email address to forward the matching messages to.
+                
+        Returns:
+            Updated filter resource if successful, None otherwise.
+        """
+        self.delete_filter(filter_id)
+        return self.create_filter(criteria, actions)
+        
     # endregion
         
 def main():
