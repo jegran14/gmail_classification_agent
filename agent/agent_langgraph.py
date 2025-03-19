@@ -2,12 +2,8 @@ import os
 from dotenv import load_dotenv, find_dotenv
 _ = load_dotenv(find_dotenv())
 
-import operator
-from typing import TypedDict, Annotated, Dict, Optional, Union, List
-
 from langchain_google_genai import ChatGoogleGenerativeAI # Import the ChatGoogleGenerativeAI class from langchain_google_genai
-from langchain_core.tools.convert import tool # Import the tool function to convert a function  to tool
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AIMessage
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 
@@ -23,15 +19,8 @@ gmail_api = GmailAPI(credentials_path=os.getenv("GMAIL_CREDENTIALS_PATH"), token
 gmail_api()
 
 # region AGENT DEFINITION
-from langgraph.types import interrupt
-from agent.utils.gmail_tools import GmailToolkit
-
-class AgentState(TypedDict):
-    """
-    Messages history of the agent. The Annotation operator.add is used to concatenate the list of messages.
-    withouth the annotation, the list of messages would be replaced by the new list of messages.
-    """
-    messages: Annotated[list[AnyMessage], operator.add]
+from agent.utils.tools.gmail_tools import GmailToolkit
+from agent.utils.states.base_state import AgentState
     
 
 class Agent:
@@ -92,10 +81,6 @@ class Agent:
         """
         return len(state["messages"][-1].tool_calls) > 0
             
-            
-    #reguion TOOLS DEFINITION
-    # Remove tool definitions from here
-    # endregion
 
 if __name__ == '__main__':
     # region TEST_AGENT
