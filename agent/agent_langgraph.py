@@ -25,11 +25,11 @@ class Agent:
         self.system = system
         graph = StateGraph(AgentState)  # Create a state graph with the AgentState class
         # Construct graph
-        graph.add_node("execute", self._execute)
-        graph.add_node("action", self._take_action)
+        graph.add_node("execute", self.execute)
+        graph.add_node("action", self.take_action)
         graph.add_conditional_edges(
             "execute",
-            self._exists_action,
+            self.exists_action,
             {True: "action", False: END}
         )
         graph.add_edge("action", "execute")
@@ -44,7 +44,7 @@ class Agent:
         self.tools = {t.name: t for t in tools if hasattr(t, "name")}
         self.model = model.bind_tools(self.tools.values())
         
-    def _execute(self, state: AgentState):
+    def execute(self, state: AgentState):
         """
         Aexecute the agent with the user query
         """
@@ -55,7 +55,7 @@ class Agent:
         return {'messages': [message]}
     
 
-    def _take_action(self, state: AgentState):
+    def take_action(self, state: AgentState):
         """
         Take an action based on the user query.
         Only execute tool calls that were confirmed.
@@ -72,7 +72,7 @@ class Agent:
             results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
         return {'messages': results}
 
-    def _exists_action(self, state: AgentState):
+    def exists_action(self, state: AgentState):
         """
         Check if there is a tool call in the last message
         """
