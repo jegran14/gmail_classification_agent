@@ -41,8 +41,8 @@ template = """
     <title>Gmail Agent Chat</title>
     <style>
         body { 
-            font-family: Arial, sans-serif; 
-            background-color: #fdfdfd; 
+            font-family: 'Roboto', sans-serif; 
+            background-color: #f3f4f6; 
             margin: 0; 
             padding: 0; 
             overflow-x: hidden;
@@ -52,6 +52,7 @@ template = """
             color: white; 
             padding: 20px; 
             text-align: center; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .chat-container { 
             max-width: 800px; 
@@ -62,44 +63,80 @@ template = """
             height: 60vh; 
             overflow-y: auto; 
             border-radius: 10px; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .message { 
             margin: 10px 0; 
             padding: 10px; 
             border-radius: 10px; 
-            max-width: 70%;
+            max-width: 70%; 
+            animation: fadeIn 0.3s ease-in-out;
         }
         .user { 
             background-color: #e6f7ff; 
-            text-align: right;
+            text-align: right; 
             margin-left: auto;
         }
         .agent { 
             background-color: #f0f0f0; 
-            text-align: left;
+            text-align: left; 
             margin-right: auto;
         }
         .input-container { 
             max-width: 800px; 
             margin: 0 auto; 
             padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
         }
         .input-container form { 
             display: flex; 
+            width: 100%;
         }
         .input-container input[type=text] { 
             flex: 1; 
-            padding: 10px; 
+            padding: 15px; 
             border: 1px solid #ccc; 
-            border-radius: 5px; 
+            border-radius: 25px; 
+            font-size: 16px; 
+            outline: none; 
+            transition: border-color 0.3s;
+        }
+        .input-container input[type=text]:focus { 
+            border-color: #4A90E2;
         }
         .input-container button { 
-            padding: 10px; 
+            padding: 15px 20px; 
             border: none; 
             background-color: #4A90E2; 
             color: white; 
-            border-radius: 5px; 
+            border-radius: 25px; 
             margin-left: 10px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            transition: background-color 0.3s;
+        }
+        .input-container button:hover { 
+            background-color: #357ABD;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 600px) {
+            .chat-container { 
+                height: 50vh; 
+                padding: 15px;
+            }
+            .input-container input[type=text] { 
+                font-size: 14px; 
+                padding: 10px;
+            }
+            .input-container button { 
+                font-size: 14px; 
+                padding: 10px 15px;
+            }
         }
     </style>
 </head>
