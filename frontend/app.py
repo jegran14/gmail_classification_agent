@@ -227,6 +227,9 @@ template = """
             animation: fadeIn 0.3s ease-in-out;
             line-height: 1.5;
             font-size: 15px;
+            /* Add word breaking for long content */
+            word-break: break-word;
+            overflow-wrap: break-word;
         }
         
         .user { 
@@ -275,6 +278,9 @@ template = """
             padding: 12px;
             margin: 10px 0;
             overflow-x: auto;
+            /* Ensure code blocks handle long content properly */
+            white-space: pre-wrap;
+            word-break: break-all;
         }
         
         .agent code {
@@ -283,6 +289,8 @@ template = """
             background-color: var(--code-bg);
             padding: 2px 4px;
             border-radius: 3px;
+            /* Handle long inline code */
+            word-break: break-all;
         }
         
         .agent pre code {
@@ -373,78 +381,6 @@ template = """
             font-size: 18px;
         }
         
-        .welcome-screen {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 24px;
-            gap: 24px;
-        }
-        
-        .welcome-icon {
-            font-size: 64px;
-            color: var(--primary-color);
-            margin-bottom: 16px;
-        }
-        
-        .welcome-title {
-            font-size: 28px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-        
-        .welcome-description {
-            font-size: 16px;
-            color: var(--text-secondary);
-            max-width: 500px;
-            margin-bottom: 24px;
-        }
-        
-        .features {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 24px;
-            justify-content: center;
-            margin-top: 16px;
-        }
-        
-        .feature-card {
-            background-color: var(--surface-color);
-            border-radius: var(--radius-md);
-            padding: 24px;
-            width: 220px;
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-            border: 1px solid var(--border-color);
-            text-align: center;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .feature-icon {
-            font-size: 32px;
-            color: var(--primary-color);
-            margin-bottom: 16px;
-        }
-        
-        .feature-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .feature-description {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        
         .typing-indicator {
             display: flex;
             align-items: center;
@@ -511,19 +447,6 @@ template = """
                 max-width: 90%;
                 font-size: 14px;
             }
-            
-            .welcome-title {
-                font-size: 24px;
-            }
-            
-            .welcome-description {
-                font-size: 15px;
-            }
-            
-            .feature-card {
-                width: 100%;
-                max-width: 300px;
-            }
         }
     </style>
 </head>
@@ -544,7 +467,7 @@ template = """
     </div>
     
     <div class="main-container">
-        <div id="chat-view" class="chat-container" style="display: {% if not session['messages'] %}none{% else %}flex{% endif %};">
+        <div id="chat-view" class="chat-container">
             <div id="messages-container" class="messages-container">
                 {% for msg in messages %}
                     <div class="message {{ msg.type }}">
@@ -565,46 +488,6 @@ template = """
                 </form>
             </div>
         </div>
-        
-        <div id="welcome-screen" class="welcome-screen" style="display: {% if session['messages'] %}none{% else %}flex{% endif %};">
-            <div>
-                <div class="welcome-icon">
-                    <i class="fas fa-envelope-open-text"></i>
-                </div>
-                <h1 class="welcome-title">Welcome to Gmail Assistant</h1>
-                <p class="welcome-description">
-                    Your intelligent email companion designed to help you manage your Gmail account efficiently.
-                    Ask for help with emails, organizing, searching, and more.
-                </p>
-                <button id="start-chat-btn" class="btn btn-primary">
-                    <i class="fas fa-comments"></i> Start Chatting
-                </button>
-            </div>
-            
-            <div class="features">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <h3 class="feature-title">Email Search</h3>
-                    <p class="feature-description">Find emails quickly with natural language queries</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-sort-amount-down"></i>
-                    </div>
-                    <h3 class="feature-title">Organize</h3>
-                    <p class="feature-description">Sort, filter, and manage your inbox efficiently</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-pen-fancy"></i>
-                    </div>
-                    <h3 class="feature-title">Compose</h3>
-                    <p class="feature-description">Get help drafting professional emails</p>
-                </div>
-            </div>
-        </div>
     </div>
     
     <script>
@@ -613,6 +496,11 @@ template = """
             document.querySelectorAll('pre code').forEach((block) => {
                 hljs.highlightBlock(block);
             });
+            
+            // Initialize chat if no messages exist
+            if (document.querySelectorAll('.message').length === 0) {
+                initializeChat();
+            }
         });
         
         // Function to highlight code in newly added messages
@@ -625,13 +513,10 @@ template = """
         }
         
         // DOM elements
-        const chatView = document.getElementById("chat-view");
-        const welcomeScreen = document.getElementById("welcome-screen");
-        const startChatBtn = document.getElementById("start-chat-btn");
-        const clearChatBtn = document.getElementById("clear-chat-btn");
         const messagesContainer = document.getElementById("messages-container");
         const chatForm = document.getElementById("chat-form");
         const userInput = document.getElementById("user-input");
+        const clearChatBtn = document.getElementById("clear-chat-btn");
         
         // Function to scroll to bottom of messages
         function scrollToBottom() {
@@ -641,117 +526,106 @@ template = """
         // Scroll to bottom on page load
         scrollToBottom();
         
-        // Start chat button
-        if (startChatBtn) {
-            startChatBtn.addEventListener("click", function() {
-                welcomeScreen.style.display = "none";
-                chatView.style.display = "flex";
+        // Function to initialize chat
+        function initializeChat() {
+            // Add typing indicator
+            const typingIndicator = document.createElement("div");
+            typingIndicator.className = "typing-indicator";
+            typingIndicator.innerHTML = '<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+            messagesContainer.appendChild(typingIndicator);
+            scrollToBottom();
+            
+            // Initialize chat with empty message
+            fetch("/initialize", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                messagesContainer.removeChild(typingIndicator);
                 
-                // Add typing indicator
-                const typingIndicator = document.createElement("div");
-                typingIndicator.className = "typing-indicator";
-                typingIndicator.innerHTML = '<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
-                messagesContainer.appendChild(typingIndicator);
+                // Add agent message
+                const messageDiv = document.createElement("div");
+                messageDiv.className = "message agent";
+                messageDiv.innerHTML = data.message;
+                messagesContainer.appendChild(messageDiv);
+                
+                // Apply syntax highlighting to code blocks
+                highlightNewCode();
                 scrollToBottom();
-                
-                // Initialize chat with empty message
-                fetch("/initialize", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Remove typing indicator
-                    messagesContainer.removeChild(typingIndicator);
-                    
-                    // Add agent message
-                    const messageDiv = document.createElement("div");
-                    messageDiv.className = "message agent";
-                    messageDiv.innerHTML = data.message;
-                    messagesContainer.appendChild(messageDiv);
-                    
-                    // Apply syntax highlighting to code blocks
-                    highlightNewCode();
-                    scrollToBottom();
-                });
             });
         }
         
         // Clear chat button
-        if (clearChatBtn) {
-            clearChatBtn.addEventListener("click", function() {
-                fetch("/clear", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Clear messages
-                        messagesContainer.innerHTML = "";
-                        
-                        // Show welcome screen
-                        chatView.style.display = "none";
-                        welcomeScreen.style.display = "flex";
-                    }
-                });
+        clearChatBtn.addEventListener("click", function() {
+            fetch("/clear", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Clear messages
+                    messagesContainer.innerHTML = "";
+                    // Initialize a new chat
+                    initializeChat();
+                }
             });
-        }
+        });
         
         // Handle chat form submission with AJAX
-        if (chatForm) {
-            chatForm.addEventListener("submit", function(e) {
-                e.preventDefault();
+        chatForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+            
+            // Add user message to chat
+            const messageDiv = document.createElement("div");
+            messageDiv.className = "message user";
+            messageDiv.textContent = userMessage;
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+            
+            // Clear input
+            userInput.value = "";
+            
+            // Add typing indicator
+            const typingIndicator = document.createElement("div");
+            typingIndicator.className = "typing-indicator";
+            typingIndicator.innerHTML = '<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+            messagesContainer.appendChild(typingIndicator);
+            scrollToBottom();
+            
+            // Send message to server
+            fetch("/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ user_input: userMessage })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                messagesContainer.removeChild(typingIndicator);
                 
-                const userMessage = userInput.value.trim();
-                if (!userMessage) return;
+                // Add agent message with HTML content
+                const agentMessageDiv = document.createElement("div");
+                agentMessageDiv.className = "message agent";
+                agentMessageDiv.innerHTML = data.message;
+                messagesContainer.appendChild(agentMessageDiv);
                 
-                // Add user message to chat
-                const messageDiv = document.createElement("div");
-                messageDiv.className = "message user";
-                messageDiv.textContent = userMessage;
-                messagesContainer.appendChild(messageDiv);
+                // Apply syntax highlighting to code blocks
+                highlightNewCode();
                 scrollToBottom();
-                
-                // Clear input
-                userInput.value = "";
-                
-                // Add typing indicator
-                const typingIndicator = document.createElement("div");
-                typingIndicator.className = "typing-indicator";
-                typingIndicator.innerHTML = '<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
-                messagesContainer.appendChild(typingIndicator);
-                scrollToBottom();
-                
-                // Send message to server
-                fetch("/chat", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ user_input: userMessage })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Remove typing indicator
-                    messagesContainer.removeChild(typingIndicator);
-                    
-                    // Add agent message with HTML content
-                    const agentMessageDiv = document.createElement("div");
-                    agentMessageDiv.className = "message agent";
-                    agentMessageDiv.innerHTML = data.message;
-                    messagesContainer.appendChild(agentMessageDiv);
-                    
-                    // Apply syntax highlighting to code blocks
-                    highlightNewCode();
-                    scrollToBottom();
-                });
             });
-        }
+        });
     </script>
 </body>
 </html>
