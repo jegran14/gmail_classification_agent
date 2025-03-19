@@ -1,5 +1,5 @@
-from flask import Flask, render_template_string, request, redirect, url_for, session
-import os, sys, yaml, time
+from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+import os, sys, yaml, time, uuid
 from dotenv import load_dotenv, find_dotenv
 import atexit
 
@@ -33,134 +33,583 @@ def initialize_agent(checkpointer):
 global_memory = MemorySaver()
 global_agent = initialize_agent(global_memory)
 
-# HTML template with revamped visuals
+# HTML template with modern design
 template = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gmail Agent Chat</title>
+    <title>Gmail Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #1a73e8;
+            --primary-light: #e8f0fe;
+            --secondary-color: #5f6368;
+            --background-color: #f8f9fa;
+            --surface-color: #ffffff;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --border-color: #dadce0;
+            --shadow-sm: 0 2px 5px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 10px rgba(0,0,0,0.12);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 24px;
+            --transition: all 0.2s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body { 
-            font-family: 'Roboto', sans-serif; 
-            background-color: #f3f4f6; 
-            margin: 0; 
-            padding: 0; 
-            overflow-x: hidden;
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--background-color); 
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
+        
         .header { 
-            background-color: #4A90E2; 
-            color: white; 
-            padding: 20px; 
-            text-align: center; 
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: var(--surface-color); 
+            padding: 16px 24px;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .chat-container { 
-            max-width: 800px; 
-            margin: 20px auto; 
-            padding: 20px; 
-            background: #fff; 
-            border: 1px solid #ddd; 
-            height: 60vh; 
-            overflow-y: auto; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .message { 
-            margin: 10px 0; 
-            padding: 10px; 
-            border-radius: 10px; 
-            max-width: 70%; 
-            animation: fadeIn 0.3s ease-in-out;
+        
+        .logo {
+            font-size: 24px;
+            color: var(--primary-color);
         }
-        .user { 
-            background-color: #e6f7ff; 
-            text-align: right; 
-            margin-left: auto;
+        
+        .title-container h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
         }
-        .agent { 
-            background-color: #f0f0f0; 
-            text-align: left; 
-            margin-right: auto;
+        
+        .title-container p {
+            font-size: 14px;
+            color: var(--text-secondary);
         }
-        .input-container { 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 10px; 
-            display: flex; 
-            align-items: center; 
+        
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            outline: none;
+            display: flex;
+            align-items: center;
             justify-content: center;
+            gap: 8px;
         }
-        .input-container form { 
-            display: flex; 
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0b5cca;
+        }
+        
+        .btn-secondary {
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--primary-light);
+        }
+        
+        .main-container {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            max-width: 900px;
+            margin: 0 auto;
             width: 100%;
         }
+        
+        .chat-container { 
+            flex: 1;
+            background: var(--surface-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 24px;
+            min-height: 60vh;
+            max-height: 65vh;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .message { 
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            max-width: 80%;
+            position: relative;
+            animation: fadeIn 0.3s ease-in-out;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+        
+        .user { 
+            background-color: var(--primary-light);
+            color: var(--text-primary);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .agent { 
+            background-color: var(--surface-color);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .input-container {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--surface-color);
+            position: relative;
+        }
+        
+        .input-container form { 
+            display: flex;
+            width: 100%;
+            gap: 12px;
+        }
+        
         .input-container input[type=text] { 
             flex: 1; 
-            padding: 15px; 
-            border: 1px solid #ccc; 
-            border-radius: 25px; 
-            font-size: 16px; 
+            padding: 12px 16px; 
+            border: 1px solid var(--border-color); 
+            border-radius: var(--radius-lg); 
+            font-size: 15px; 
             outline: none; 
-            transition: border-color 0.3s;
+            transition: var(--transition);
+            background-color: var(--background-color);
         }
+        
         .input-container input[type=text]:focus { 
-            border-color: #4A90E2;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
         }
-        .input-container button { 
-            padding: 15px 20px; 
-            border: none; 
-            background-color: #4A90E2; 
-            color: white; 
-            border-radius: 25px; 
-            margin-left: 10px; 
-            font-size: 16px; 
-            cursor: pointer; 
-            transition: background-color 0.3s;
+        
+        .send-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
         }
-        .input-container button:hover { 
-            background-color: #357ABD;
+        
+        .send-btn:hover {
+            background-color: #0b5cca;
         }
+        
+        .send-btn i {
+            font-size: 18px;
+        }
+        
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            gap: 24px;
+        }
+        
+        .welcome-icon {
+            font-size: 64px;
+            color: var(--primary-color);
+            margin-bottom: 16px;
+        }
+        
+        .welcome-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .welcome-description {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin-bottom: 24px;
+        }
+        
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+        
+        .feature-card {
+            background-color: var(--surface-color);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            width: 220px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .feature-icon {
+            font-size: 32px;
+            color: var(--primary-color);
+            margin-bottom: 16px;
+        }
+        
+        .feature-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .feature-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            max-width: 80px;
+            border-radius: var(--radius-md);
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            margin-top: 8px;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-secondary);
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .dot:nth-child(2) {
+            animation-delay: 0.5s;
+        }
+        
+        .dot:nth-child(3) {
+            animation-delay: 1s;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        @media (max-width: 600px) {
-            .chat-container { 
-                height: 50vh; 
-                padding: 15px;
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px 16px;
             }
-            .input-container input[type=text] { 
-                font-size: 14px; 
-                padding: 10px;
+            
+            .title-container h1 {
+                font-size: 18px;
             }
-            .input-container button { 
-                font-size: 14px; 
-                padding: 10px 15px;
+            
+            .title-container p {
+                display: none;
+            }
+            
+            .main-container {
+                padding: 16px;
+            }
+            
+            .message {
+                max-width: 90%;
+                font-size: 14px;
+            }
+            
+            .welcome-title {
+                font-size: 24px;
+            }
+            
+            .welcome-description {
+                font-size: 15px;
+            }
+            
+            .feature-card {
+                width: 100%;
+                max-width: 300px;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Gmail Agent Chat</h1>
-        <p>Ask me to help you manage your Gmail account.</p>
-    </div>
-    <div class="chat-container" id="chat-container">
-        {% for msg in messages %}
-            <div class="message {{ msg.type }}">
-                {{ msg.content }}
+        <div class="logo-container">
+            <div class="logo"><i class="fas fa-robot"></i></div>
+            <div class="title-container">
+                <h1>Gmail Assistant</h1>
+                <p>Your intelligent email companion</p>
             </div>
-        {% endfor %}
+        </div>
+        <div class="actions">
+            <button id="clear-chat-btn" class="btn btn-secondary">
+                <i class="fas fa-broom"></i> Clear Chat
+            </button>
+        </div>
     </div>
-    <div class="input-container">
-        <form method="post" action="/">
-            <input type="text" name="user_input" placeholder="Type your message here..." autocomplete="off" required>
-            <button type="submit">Send</button>
-        </form>
+    
+    <div class="main-container">
+        <div id="chat-view" class="chat-container" style="display: {% if not session['messages'] %}none{% else %}flex{% endif %};">
+            <div id="messages-container" class="messages-container">
+                {% for msg in messages %}
+                    <div class="message {{ msg.type }}">
+                        {{ msg.content }}
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="input-container">
+                <form id="chat-form" method="post" action="/">
+                    <input type="text" name="user_input" id="user-input" placeholder="Type your message here..." autocomplete="off" required>
+                    <button type="submit" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="welcome-screen" class="welcome-screen" style="display: {% if session['messages'] %}none{% else %}flex{% endif %};">
+            <div>
+                <div class="welcome-icon">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <h1 class="welcome-title">Welcome to Gmail Assistant</h1>
+                <p class="welcome-description">
+                    Your intelligent email companion designed to help you manage your Gmail account efficiently.
+                    Ask for help with emails, organizing, searching, and more.
+                </p>
+                <button id="start-chat-btn" class="btn btn-primary">
+                    <i class="fas fa-comments"></i> Start Chatting
+                </button>
+            </div>
+            
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3 class="feature-title">Email Search</h3>
+                    <p class="feature-description">Find emails quickly with natural language queries</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sort-amount-down"></i>
+                    </div>
+                    <h3 class="feature-title">Organize</h3>
+                    <p class="feature-description">Sort, filter, and manage your inbox efficiently</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-pen-fancy"></i>
+                    </div>
+                    <h3 class="feature-title">Compose</h3>
+                    <p class="feature-description">Get help drafting professional emails</p>
+                </div>
+            </div>
+        </div>
     </div>
+    
     <script>
-        var chatContainer = document.getElementById("chat-container");
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        // DOM elements
+        const chatView = document.getElementById("chat-view");
+        const welcomeScreen = document.getElementById("welcome-screen");
+        const startChatBtn = document.getElementById("start-chat-btn");
+        const clearChatBtn = document.getElementById("clear-chat-btn");
+        const messagesContainer = document.getElementById("messages-container");
+        const chatForm = document.getElementById("chat-form");
+        const userInput = document.getElementById("user-input");
+        
+        // Function to scroll to bottom of messages
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Scroll to bottom on page load
+        scrollToBottom();
+        
+        // Start chat button
+        if (startChatBtn) {
+            startChatBtn.addEventListener("click", function() {
+                welcomeScreen.style.display = "none";
+                chatView.style.display = "flex";
+                
+                // Add typing indicator
+                const typingIndicator = document.createElement("div");
+                typingIndicator.className = "typing-indicator";
+                typingIndicator.innerHTML = '<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+                messagesContainer.appendChild(typingIndicator);
+                scrollToBottom();
+                
+                // Initialize chat with empty message
+                fetch("/initialize", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove typing indicator
+                    messagesContainer.removeChild(typingIndicator);
+                    
+                    // Add agent message
+                    const messageDiv = document.createElement("div");
+                    messageDiv.className = "message agent";
+                    messageDiv.textContent = data.message;
+                    messagesContainer.appendChild(messageDiv);
+                    scrollToBottom();
+                });
+            });
+        }
+        
+        // Clear chat button
+        if (clearChatBtn) {
+            clearChatBtn.addEventListener("click", function() {
+                fetch("/clear", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Clear messages
+                        messagesContainer.innerHTML = "";
+                        
+                        // Show welcome screen
+                        chatView.style.display = "none";
+                        welcomeScreen.style.display = "flex";
+                    }
+                });
+            });
+        }
+        
+        // Handle chat form submission with AJAX
+        if (chatForm) {
+            chatForm.addEventListener("submit", function(e) {
+                e.preventDefault();
+                
+                const userMessage = userInput.value.trim();
+                if (!userMessage) return;
+                
+                // Add user message to chat
+                const messageDiv = document.createElement("div");
+                messageDiv.className = "message user";
+                messageDiv.textContent = userMessage;
+                messagesContainer.appendChild(messageDiv);
+                scrollToBottom();
+                
+                // Clear input
+                userInput.value = "";
+                
+                // Add typing indicator
+                const typingIndicator = document.createElement("div");
+                typingIndicator.className = "typing-indicator";
+                typingIndicator.innerHTML = '<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+                messagesContainer.appendChild(typingIndicator);
+                scrollToBottom();
+                
+                // Send message to server
+                fetch("/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ user_input: userMessage })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove typing indicator
+                    messagesContainer.removeChild(typingIndicator);
+                    
+                    // Add agent message
+                    const agentMessageDiv = document.createElement("div");
+                    agentMessageDiv.className = "message agent";
+                    agentMessageDiv.textContent = data.message;
+                    messagesContainer.appendChild(agentMessageDiv);
+                    scrollToBottom();
+                });
+            });
+        }
     </script>
 </body>
 </html>
@@ -168,50 +617,80 @@ template = """
 
 @app.before_request
 def make_session_permanent():
-    # session.permanent line removed as per new requirement
     if "messages" not in session:
         session["messages"] = []
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def chat():
-    if "thread_id" not in session:
-        session["thread_id"] = str(time.time())  # Persistent thread ID for session
+    return render_template_string(template, messages=session.get("messages", []))
 
+@app.route("/initialize", methods=["POST"])
+def initialize_chat():
+    # Create a new thread ID
+    session["thread_id"] = str(uuid.uuid4())
+    session["messages"] = []
+    
+    # Create a new thread configuration
     thread = {"configurable": {"thread_id": session["thread_id"]}}
+    
+    # Send an empty message to get initial response
+    init_state = {"messages": [HumanMessage(content="")]}
+    agent_response = ""
+    
+    for event in global_agent.graph.stream(init_state, thread):
+        for v in event.values():
+            msg = v["messages"][-1]
+            if isinstance(msg, AIMessage) and msg.content:
+                agent_response = msg.content
+    
+    # Add to session messages
+    if agent_response:
+        session["messages"].append({"type": "agent", "content": agent_response})
+    
+    return jsonify({"success": True, "message": agent_response})
 
-    if request.method == "POST":
-        user_input = request.form.get("user_input")
-        if user_input:
-            session.setdefault("messages", [])
-            session["messages"].append({"type": "user", "content": user_input})
+@app.route("/chat", methods=["POST"])
+def process_message():
+    user_input = request.json.get("user_input")
+    
+    if not user_input:
+        return jsonify({"success": False, "message": "No input provided"})
+    
+    # Add user message to session
+    session["messages"].append({"type": "user", "content": user_input})
+    
+    # Get thread configuration
+    thread = {"configurable": {"thread_id": session.get("thread_id", str(uuid.uuid4()))}}
+    
+    # Create conversation history
+    conversation_history = [
+        HumanMessage(content=m["content"]) if m["type"] == "user" else AIMessage(content=m["content"])
+        for m in session["messages"]
+    ]
+    
+    # Get agent response
+    agent_response = ""
+    for event in global_agent.graph.stream({"messages": conversation_history}, thread):
+        for v in event.values():
+            msg = v["messages"][-1]
+            if isinstance(msg, AIMessage) and msg.content:
+                agent_response = msg.content
+    
+    # Add agent response to session
+    if agent_response:
+        session["messages"].append({"type": "agent", "content": agent_response})
+    
+    return jsonify({"success": True, "message": agent_response})
 
-            # Pass full conversation history
-            conversation_history = [
-                HumanMessage(content=m["content"]) if m["type"] == "user" else AIMessage(content=m["content"])
-                for m in session["messages"]
-            ]
-
-            for event in global_agent.graph.stream({"messages": conversation_history}, thread):
-                for v in event.values():
-                    msg = v["messages"][-1]
-                    if isinstance(msg, AIMessage) and msg.content:
-                        session["messages"].append({"type": "agent", "content": msg.content})
-
-            return render_template_string(template, messages=session["messages"])
-    else:
-        # Initialize session messages on first load
-        session["messages"] = []
-
-        # Send an empty user message to get an initial response
-        init_state = {"messages": [HumanMessage(content="")]}
-        for event in global_agent.graph.stream(init_state, thread):
-            for v in event.values():
-                msg = v["messages"][-1]
-                if isinstance(msg, AIMessage) and msg.content:
-                    session["messages"].append({"type": "agent", "content": msg.content})
-
-    return render_template_string(template, messages=session["messages"])
-
+@app.route("/clear", methods=["POST"])
+def clear_chat():
+    # Clear session messages
+    session["messages"] = []
+    
+    # Initialize a new agent (reinitialize)
+    session["thread_id"] = str(uuid.uuid4())
+    
+    return jsonify({"success": True})
 
 if __name__ == "__main__":
     app.run(debug=True)
