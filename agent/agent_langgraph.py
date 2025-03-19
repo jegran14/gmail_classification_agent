@@ -9,14 +9,11 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from gmail_api.gmail_api import GmailAPI
 
 import yaml  # added import for YAML parsing
 
 creds_path = os.getenv("GMAIL_CREDENTIALS_PATH")
 token_path = os.getenv("GMAIL_TOKEN_PATH")
-gmail_api = GmailAPI(credentials_path=os.getenv("GMAIL_CREDENTIALS_PATH"), token_path=os.getenv("GMAIL_TOKEN_PATH"))
-gmail_api()
 
 # region AGENT DEFINITION
 from agent.utils.tools.gmail_tools import GmailToolkit
@@ -42,7 +39,7 @@ class Agent:
         self.graph = graph.compile(checkpointer=checkpointer)
         
         # Bind tools to the agent using GmailToolkit
-        toolkit = GmailToolkit(gmail_api)
+        toolkit = GmailToolkit()
         tools = toolkit.get_tools()
         self.tools = {t.name: t for t in tools if hasattr(t, "name")}
         self.model = model.bind_tools(self.tools.values())

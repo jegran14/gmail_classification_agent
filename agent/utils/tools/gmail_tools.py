@@ -1,9 +1,16 @@
 from langchain_core.tools.convert import tool
 from typing import Dict, Union, List, Optional
 
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from gmail_api.gmail_api import GmailAPI
+
 class GmailToolkit:
-    def __init__(self, gmail_api):
-        self.gmail_api = gmail_api
+    def __init__(self):
+        self.gmail_api = GmailAPI(credentials_path=os.getenv("GMAIL_CREDENTIALS_PATH"), token_path=os.getenv("GMAIL_TOKEN_PATH"))
+        self.gmail_api() #Initialize API
+        
         self._tools = [
             self.list_labels,
             self.create_label,
