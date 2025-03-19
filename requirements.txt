@@ -1,6 +1,11 @@
-flask>=2.0
+flask>=2.0.1
 langchain>=0.1.0
 langchain-google-genai>=0.0.5
 langgraph>=0.0.20
 pyyaml>=6.0
 python-dotenv>=1.0.0
+google-api-python-client>=2.97.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+requests>=2.31.0
+pandas>=2.0.0
