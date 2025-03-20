@@ -638,13 +638,11 @@ def make_session_permanent():
 
 @app.route("/", methods=["GET"])
 def chat():
-    # Convert any markdown in agent messages to HTML for rendering
-    messages = session.get("messages", [])
-    for msg in messages:
-        if msg["type"] == "agent":
-            msg["content"] = process_markdown(msg["content"])
+    # Start a new chat on page refresh by clearing session data
+    session["messages"] = []
+    session["thread_id"] = str(uuid.uuid4())
     
-    return render_template_string(template, messages=messages)
+    return render_template_string(template, messages=[])
 
 @app.route("/initialize", methods=["POST"])
 def initialize_chat():
@@ -655,15 +653,19 @@ def initialize_chat():
     # Create a new thread configuration
     thread = {"configurable": {"thread_id": session["thread_id"]}}
     
-    # Send an empty message to get initial response
-    init_state = {"messages": [HumanMessage(content="")]}
+    # Send a greeting message instead of empty content
+    init_state = {"messages": [HumanMessage(content="Hello, I need help with Gmail")]}
     agent_response = ""
     
-    for event in global_agent.graph.stream(init_state, thread):
-        for v in event.values():
-            msg = v["messages"][-1]
-            if isinstance(msg, AIMessage) and msg.content:
-                agent_response = msg.content
+    try:
+        for event in global_agent.graph.stream(init_state, thread):
+            for v in event.values():
+                msg = v["messages"][-1]
+                if isinstance(msg, AIMessage) and msg.content:
+                    agent_response = msg.content
+    except Exception as e:
+        app.logger.error(f"Error during initialization: {str(e)}")
+        agent_response = "I'm ready to help you with Gmail. What would you like to know or do today?"
     
     # Add to session messages
     if agent_response:
@@ -695,11 +697,15 @@ def process_message():
     
     # Get agent response
     agent_response = ""
-    for event in global_agent.graph.stream({"messages": conversation_history}, thread):
-        for v in event.values():
-            msg = v["messages"][-1]
-            if isinstance(msg, AIMessage) and msg.content:
-                agent_response = msg.content
+    try:
+        for event in global_agent.graph.stream({"messages": conversation_history}, thread):
+            for v in event.values():
+                msg = v["messages"][-1]
+                if isinstance(msg, AIMessage) and msg.content:
+                    agent_response = msg.content
+    except Exception as e:
+        app.logger.error(f"Error during chat: {str(e)}")
+        agent_response = "I encountered an error processing your request. Please try again."
     
     # Add agent response to session (store raw markdown)
     if agent_response:
