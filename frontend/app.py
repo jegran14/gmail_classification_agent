@@ -448,6 +448,28 @@ template = """
                 font-size: 14px;
             }
         }
+        
+        /* Glitter animated cat styles */
+        #glitter-cat {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 48px;
+            color: var(--primary-color);
+            animation: glitter 1s infinite;
+            z-index: 200;
+        }
+        @keyframes glitter {
+            0% {
+                text-shadow: 0 0 5px #fff, 0 0 10px #ff00ff, 0 0 15px #ff00ff;
+            }
+            50% {
+                text-shadow: 0 0 10px #fff, 0 0 20px #ff00ff, 0 0 30px #ff00ff;
+            }
+            100% {
+                text-shadow: 0 0 5px #fff, 0 0 10px #ff00ff, 0 0 15px #ff00ff;
+            }
+        }
     </style>
 </head>
 <body>
@@ -489,6 +511,9 @@ template = """
             </div>
         </div>
     </div>
+    
+    <!-- Glitter Animated Cat -->
+    <div id="glitter-cat"><i class="fas fa-cat"></i></div>
     
     <script>
         // Initialize syntax highlighting

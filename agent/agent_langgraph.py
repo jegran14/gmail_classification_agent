@@ -2,10 +2,11 @@ import os
 from dotenv import load_dotenv, find_dotenv
 _ = load_dotenv(find_dotenv())
 
-from langchain_google_genai import ChatGoogleGenerativeAI # Import the ChatGoogleGenerativeAI class from langchain_google_genai
+from langchain_google_genai import ChatGoogleGenerativeAI # Import the ChatGoogleGenerativeAI classP from langchain_google_genai
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AIMessage
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.prebuilt import ToolNode
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -24,24 +25,26 @@ class Agent:
     def __init__(self, model, system = "", checkpointer = None):
         self.system = system
         graph = StateGraph(AgentState)  # Create a state graph with the AgentState class
-        # Construct graph
-        graph.add_node("execute", self.execute)
-        graph.add_node("action", self.take_action)
-        graph.add_conditional_edges(
-            "execute",
-            self.exists_action,
-            {True: "action", False: END}
-        )
-        graph.add_edge("action", "execute")
-        graph.set_entry_point("execute")
-        
-        # Compile the graph
-        self.graph = graph.compile(checkpointer=checkpointer)
         
         # Bind tools to the agent using GmailToolkit
         toolkit = GmailToolkit()
         tools = toolkit.get_tools()
+        self.tool_node = ToolNode(tools)
         self.tools = {t.name: t for t in tools if hasattr(t, "name")}
+        
+        # Construct graph
+        graph.add_node("execute", self.execute)
+        graph.add_node("tools", self.tool_node)
+        graph.add_conditional_edges(
+            "execute",
+            self.exists_action,
+            {True: "tools", False: END}
+        )
+        graph.add_edge("tools", "execute")
+        graph.set_entry_point("execute")
+        
+        # Compile the graph
+        self.graph = graph.compile(checkpointer=checkpointer)
         self.model = model.bind_tools(self.tools.values())
         
     def execute(self, state: AgentState):
@@ -93,7 +96,7 @@ if __name__ == '__main__':
         thread = {"configurable": {"thread_id": "1"}}
         
         # Initial greeting from the agent
-        init_state = {"messages": [HumanMessage(content="")]}
+        init_state = {"messages": [HumanMessage(content="Hello what can you do?")]}
         for event in agent.graph.stream(init_state, thread):
             for v in event.values():
                 msg = v["messages"][-1]
