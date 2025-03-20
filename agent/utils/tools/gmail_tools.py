@@ -85,6 +85,7 @@ class GmailToolkit:
             
         Tips:
             - If the user does not provide the label_id you can find it by listing all labels and finding the label by name.
+            - After deleting the label, list labels to check that it has been correctly deleted.
 
         """
         try:
@@ -176,6 +177,7 @@ class GmailToolkit:
             
         Tips:
             - If the user does not provide the filter_id you can find it by listing all filters and finding the filter by criteria.
+            - After deleting the filter, list filters to check that it has been correctly deleted.
         """
         try:
             self.gmail_api.delete_filter(filter_id)
