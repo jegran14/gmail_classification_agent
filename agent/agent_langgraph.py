@@ -63,7 +63,7 @@ class Agent:
         Take an action based on the user query.
         Only execute tool calls that were confirmed.
         """
-        tool_calls = state["messages"][-1].tool_calls  # tool_calls already filtered by ask_human
+        tool_calls = state["messages"][-1].tool_calls 
         results = []
         for t in tool_calls:
             print(f"Calling: {t}")

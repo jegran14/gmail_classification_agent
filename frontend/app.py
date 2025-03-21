@@ -10,7 +10,7 @@ from typing import List
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from agent.agent_langgraph import Agent
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 
@@ -454,20 +454,27 @@ template = """
             position: fixed;
             bottom: 20px;
             right: 20px;
-            font-size: 48px;
+            font-size: 42px;
             color: var(--primary-color);
-            animation: glitter 1s infinite;
+            animation: gentle-glitter 3s infinite;
             z-index: 200;
+            transition: transform 0.3s ease;
+            cursor: pointer;
         }
-        @keyframes glitter {
+        
+        #glitter-cat:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+        
+        @keyframes gentle-glitter {
             0% {
-                text-shadow: 0 0 5px #fff, 0 0 10px #ff00ff, 0 0 15px #ff00ff;
+                text-shadow: 0 0 3px #fff, 0 0 5px var(--primary-light);
             }
             50% {
-                text-shadow: 0 0 10px #fff, 0 0 20px #ff00ff, 0 0 30px #ff00ff;
+                text-shadow: 0 0 5px #fff, 0 0 8px var(--primary-color), 0 0 10px var(--primary-light);
             }
             100% {
-                text-shadow: 0 0 5px #fff, 0 0 10px #ff00ff, 0 0 15px #ff00ff;
+                text-shadow: 0 0 3px #fff, 0 0 5px var(--primary-light);
             }
         }
     </style>
@@ -679,7 +686,7 @@ def initialize_chat():
     thread = {"configurable": {"thread_id": session["thread_id"]}}
     
     # Send a greeting message instead of empty content
-    init_state = {"messages": [HumanMessage(content="Hello, I need help with Gmail")]}
+    init_state = {"messages": [HumanMessage(content="Welcome the user and introduce yourself")]}
     agent_response = ""
     
     try:
