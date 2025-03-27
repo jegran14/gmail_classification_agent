@@ -29,13 +29,13 @@ The objective of this project is to build an agent that, through natural languag
 ## Installation
 
 1. Clone the repository:
-```
+```bash
 git clone https://github.com/yourusername/gmail_classification_agent.git
 cd gmail_classification_agent
 ```
 
 2. Install dependencies:
-```
+```bash
 pip install -r requirements.txt
 ```
 
@@ -43,10 +43,18 @@ pip install -r requirements.txt
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select an existing one
-3. Enable the Gmail API
-4. Create OAuth 2.0 credentials
-5. Download the credentials JSON file
-6. Rename it to `credentials.json` and place it in a secure location
+3. Navigate to **APIs & Services > Library** and search for "Gmail API"
+4. Click on Gmail API and then **Enable**
+5. Go to **APIs & Services > Credentials**
+6. Click **Create Credentials** and select **OAuth client ID**
+7. Select **Desktop app** as the application type, give it a name, and click **Create**
+8. Download the JSON file, rename it to `credentials.json` and place it in the `gmail_api/utils/` directory
+
+## Setting Up Google Gemini API
+
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key or use an existing one
+3. Copy the API key for use in your environment variables
 
 ## Environment Variables
 
@@ -87,43 +95,47 @@ gmail_classification_agent/
 ├── agent/
 │   ├── utils/
 │   │   ├── tools/
-│   │   │   └── gmail_tools.py       # Gmail-related tools
-│   │   ├── states/
-│   │   │   └── base_state.py        # Agent state definitions
-│   │   └── gmail_api/
-│   │       └── gmail_api.py         # Gmail API wrapper
+│   │   │   └── gmail_tools.py       # Gmail-related toolset
+│   │   └── states/
+│   │       └── base_state.py        # Agent state definitions
 │   ├── prompts/
 │   │   └── agent_prompt.yaml        # System prompts for the agent
 │   └── agent_langgraph.py           # Main agent implementation
+├── frontend/
+│   └── app.py                       # Flask web interface
+├── gmail_api/
+│   ├── utils/
+│   │   └── token.json               # Authentication token storage
+│   └── gmail_api.py                 # Gmail API wrapper
+├── requirements.txt                 # Project dependencies
 ├── .env                             # Environment variables
-└── README.md                        # This file
+├── .gitignore                       # Git ignore file
+└── README.md                        # Project documentation
 ```
 
 ## License
 
-MIT License
-
-Copyright (c) 2024
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
-[Include contribution guidelines here]
+1. Fork the repository
+2. Clone your fork: `git clone https://github.com/your-username/gmail_classification_agent.git`
+3. Create a new branch for your feature: `git checkout -b feature/feature-name`
+4. Make your changes
+5. Run tests to ensure everything works as expected
+6. Commit your changes: `git commit -m "Add some feature"`
+7. Push to your branch: `git push origin feature/feature-name`
+8. Submit a pull request
 
+
+### Reporting Issues
+
+If you find a bug or have a suggestion for improvement:
+
+1. Check if the issue already exists in the Issues section
+2. If not, create a new issue with a descriptive title and detailed information
+3. Include steps to reproduce, expected behavior, and actual behavior
+4. Add relevant screenshots or error logs if applicable
+
+We appreciate all contributions and will review them as quickly as possible!
