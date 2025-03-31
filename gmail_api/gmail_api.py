@@ -83,25 +83,25 @@ class GmailAPI:
             print(f'An error occurred: {error}')
             return None
     
-    def create_label(self, label_name: str, label_color: Optional[str] = None) -> Optional[Dict]:
+    def create_label(self, label_content: Dict) -> Optional[Dict]:
         """
         Create a new label for the authenticated user.
         
         Args:
-            label_name (str): The name of the label to create.
-            label_color (str): The color of the label in hex format.
+            label_content (Dict): A dictionary containing the label information.
+                {
+                    "name": str,
+                    "messageListVisibility": enum (MessageListVisibility),
+                    "labelListVisibility": enum (LabelListVisibility),
+                    "color": {
+                        object (Color)
+                    }
+                }
             
         Returns:
             Created label resource if successful, None otherwise.
         """
-        try:
-            label_content = {'name': label_name}
-            if label_color:
-                label_content['color'] = {
-                    'backgroundColor': label_color,
-                    'textColor': '#000000'  # Use 'white' as a predefined color name
-                }
-                
+        try:                
             return self.service.users().labels().create(
                 userId='me', body=label_content).execute()
         except Exception as error:
@@ -139,28 +139,26 @@ class GmailAPI:
             print(f'An error occurred: {error}')
             return None
 
-    def update_label(self, label_id: str, new_name: Optional[str] = None, new_color: Optional[str] = None) -> Optional[Dict]:
+    def update_label(self, label_id: str, label_content: Dict) -> Optional[Dict]:
         """
         Update an existing label's name and/or color.
         
         Args:
             label_id (str): The ID of the label to update.
-            new_name (str): The new name for the label.
-            new_color (str): The new color for the label in hex format.
+            label_content (Dict): A dictionary containing the label information.
+                {
+                    "name": str,
+                    "messageListVisibility": enum (MessageListVisibility),
+                    "labelListVisibility": enum (LabelListVisibility),
+                    "color": {
+                        object (Color)
+                    }
+                }
             
         Returns:
             Updated label resource if successful, None otherwise.
         """
-        try:
-            label_content = {}
-            if new_name:
-                label_content['name'] = new_name
-            if new_color:
-                label_content['color'] = {
-                    'backgroundColor': new_color,
-                    'textColor': '#000000'  # Use 'black' as a predefined color name
-                }
-                
+        try:                
             return self.service.users().labels().patch(
                 userId='me', id=label_id, body=label_content).execute()
         except Exception as error:
@@ -278,13 +276,22 @@ def main():
         
         # Test create_label
         label_name = 'Test Label'
-        label_color = '#000000'
-        label = gmail_api.create_label(label_name, label_color)
+        label_color = '#ffffff'  # Red color in hex format
+        label_content = {
+            'name': label_name,
+            'messageListVisibility': 'show',
+            'labelListVisibility': 'labelHide',
+            'color': {
+                'backgroundColor': label_color,
+                'textColor': '#000000'  # White text color
+                }
+        }
+        label = gmail_api.create_label(label_content)
         print(label)
         
         # Test delete label
-        label_id = label['id']
-        gmail_api.delete_label(label_id)     
+        #label_id = label['id']
+        #gmail_api.delete_label(label_id)     
         
     except HttpError as error:
         print(f'An error occurred: {error}')

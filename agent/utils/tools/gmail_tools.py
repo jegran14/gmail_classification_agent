@@ -53,23 +53,31 @@ class GmailToolkit:
             return "No labels found."
         return labels
 
-    def create_label(self, label_name: str, label_color: str) -> str:
+    def create_label(self, label_content: Dict) -> str:
         """Create a new label in the user's gmail account.
         
         Args:
-            label_name (str): The name of the label to create. You can nest labels by using a '/' in the name. example ParentLabel/ChildLabel
-            label_color (str): The color of the label in hex format.
-                List of background available colors: #000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
-            
+            label_content (Dict): Label content dictionary with possible keys:
+            }
+                "name": name of the label,
+                "messageListVisibility": visibility of the label in the message list (show (default), hide) [Optional]
+                "labelListVisibility": visubility of the label in the label list (labelShow (default), labelHide, labelShowIfUnread) [Optional]
+                "color": {
+                    "backgroundColor": color in hex format (e.g. #FF0000) [Optional],
+                    "textColor": color in hex format (e.g. #FFFFFF) [Optional]
+                }
+            }
         Returns:
             A message indicating the success or failure of the label creation
             
         Tips:
+            - Available colors are: #000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
             - If the user provides a label name with a '/', the label will be nested under the parent label.
             - If the user provides a label name that already exists, the label will not be created.
             - If the user provides a label color in natural language, you choose the closest color from the list of available colors.
+            - If the user provides one color, that one will be the background color and you should set the other color to the default value.
         """
-        label = self.gmail_api.create_label(label_name, label_color)
+        label = self.gmail_api.create_label(label_content)
         if not label:
             return "Label could not be created."
         return f"Label {label['name']} created successfully."
@@ -94,22 +102,34 @@ class GmailToolkit:
         except Exception as error:
             return f"An error occurred: {error}"
 
-    def update_label(self, label_id: str, new_name: Optional[str] = None, new_color: Optional[str] = None) -> str:
+    def update_label(self, label_id: str, label_content: Dict) -> str:
         """Update an existing label in the user's gmail account.
         
         Args:
             label_id (str): The ID of the label to update.
-            new_name (str): The new name for the label.
-            new_color (str): The new color for the label in hex format.
+            label_content (Dict): Label content dictionary with possible keys:
+            }
+                "name": name of the label,
+                "messageListVisibility": visibility of the label in the message list (show (default), hide) [Optional]
+                "labelListVisibility": visubility of the label in the label list (labelShow (default), labelHide, labelShowIfUnread) [Optional]
+                "color": {
+                    "backgroundColor": color in hex format (e.g. #FF0000) [Optional],
+                    "textColor": color in hex format (e.g. #FFFFFF) [Optional]
+                }
+            }
             
         Returns:
             A message indicating the success or failure of the label update.
             
         Tips:
-            - If the user provides a label color in natural language, you choose the closest color from the list of available colors
+            - Available colors are: #000000, #434343, #666666, #999999, #cccccc, #efefef, #f3f3f3, #ffffff, #fb4c2f, #ffad47, #fad165, #16a766, #43d692, #4a86e8, #a479e2, #f691b3, #f6c5be, #ffe6c7, #fef1d1, #b9e4d0, #c6f3de, #c9daf8, #e4d7f5, #fcdee8, #efa093, #ffd6a2, #fce8b3, #89d3b2, #a0eac9, #a4c2f4, #d0bcf1, #fbc8d9, #e66550, #ffbc6b, #fcda83, #44b984, #68dfa9, #6d9eeb, #b694e8, #f7a7c0, #cc3a21, #eaa041, #f2c960, #149e60, #3dc789, #3c78d8, #8e63ce, #e07798, #ac2b16, #cf8933, #d5ae49, #0b804b, #2a9c68, #285bac, #653e9b, #b65775, #822111, #a46a21, #aa8831, #076239, #1a764d, #1c4587, #41236d, #83334c #464646, #e7e7e7, #0d3472, #b6cff5, #0d3b44, #98d7e4, #3d188e, #e3d7ff, #711a36, #fbd3e0, #8a1c0a, #f2b2a8, #7a2e0b, #ffc8af, #7a4706, #ffdeb5, #594c05, #fbe983, #684e07, #fdedc1, #0b4f30, #b3efd3, #04502e, #a2dcc1, #c2c2c2, #4986e7, #2da2bb, #b99aff, #994a64, #f691b2, #ff7537, #ffad46, #662e37, #ebdbde, #cca6ac, #094228, #42d692, #16a765
+            - If the user provides a label name with a '/', the label will be nested under the parent label.
+            - If the user provides a label name that already exists, the label will not be created.
+            - If the user provides a label color in natural language, you choose the closest color from the list of available colors.
+            - If the user provides one color, that one will be the background color and you should set the other color to the default value.
             - If the user does not provide the label_id you can find it by listing all labels and finding the label by name.
         """        
-        label = self.gmail_api.update_label(label_id, new_name, new_color)
+        label = self.gmail_api.update_label(label_id, label_content)
         if not label:
             return "Label could not be updated."
         return f"Label {label['name']} updated successfully."
